@@ -1,0 +1,4 @@
+- Verify the project structure before editing.
+- Keep the frontend responsive and the backend simple.
+- Use environment variables for the OpenAI API key.
+- Ensure the app can be started locally with npm commands.
