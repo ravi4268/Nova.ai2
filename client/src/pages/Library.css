@@ -1,0 +1,772 @@
+/* =========================================
+   LIBRARY PAGE
+========================================= */
+
+.library-page {
+  width: 100%;
+  min-height: 100%;
+  padding: 42px 48px;
+  box-sizing: border-box;
+  color: #ffffff;
+}
+
+/* =========================================
+   HEADER
+========================================= */
+
+.library-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 30px;
+  margin-bottom: 70px;
+}
+
+.library-title h1 {
+  margin: 0;
+  font-size: 48px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.library-title p {
+  margin: 20px 0 0;
+  color: #8fa2c2;
+  font-size: 20px;
+}
+
+/* =========================================
+   ACTIONS
+========================================= */
+
+.library-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-box {
+  width: 350px;
+  height: 56px;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 0 20px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #303b4e;
+  border-radius: 30px;
+
+  background: #111722;
+}
+
+.search-box span {
+  font-size: 20px;
+}
+
+.search-box input {
+  width: 100%;
+
+  border: none;
+  outline: none;
+
+  background: transparent;
+
+  color: #ffffff;
+
+  font-size: 17px;
+}
+
+.search-box input::placeholder {
+  color: #8291a9;
+}
+
+.new-project-button {
+  height: 56px;
+
+  padding: 0 28px;
+
+  border: none;
+  border-radius: 30px;
+
+  background: #ffffff;
+  color: #000000;
+
+  font-size: 16px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+.new-project-button:hover {
+  transform: translateY(-2px);
+  background: #e9edf5;
+}
+
+.new-project-button:active {
+  transform: scale(0.96);
+}
+
+/* =========================================
+   TABS
+========================================= */
+
+.library-tabs {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+
+  margin-bottom: 35px;
+
+  overflow-x: auto;
+
+  scrollbar-width: none;
+}
+
+.library-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.library-tab {
+  border: none;
+  background: transparent;
+
+  color: #8fa2c2;
+
+  padding: 14px 22px;
+
+  border-radius: 28px;
+
+  font-size: 17px;
+
+  cursor: pointer;
+
+  white-space: nowrap;
+
+  transition: 0.2s ease;
+}
+
+.library-tab:hover {
+  color: white;
+  background: #151e2e;
+}
+
+.library-tab.active {
+  color: white;
+  background: #192438;
+}
+
+/* =========================================
+   PROJECT HEADER
+========================================= */
+
+.project-header {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+
+  padding: 0 10px 18px;
+
+  color: #8fa2c2;
+
+  font-size: 17px;
+}
+
+/* =========================================
+   PROJECT CONTAINER
+========================================= */
+
+.project-container {
+  min-height: 420px;
+
+  border: 1px dashed #334054;
+
+  border-radius: 22px;
+
+  overflow: hidden;
+}
+
+/* =========================================
+   EMPTY PROJECT
+========================================= */
+
+.empty-projects {
+  min-height: 420px;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+
+  padding: 50px 20px;
+
+  box-sizing: border-box;
+}
+
+.empty-folder {
+  font-size: 62px;
+
+  margin-bottom: 20px;
+}
+
+.empty-projects h2 {
+  margin: 0;
+
+  font-size: 25px;
+}
+
+.empty-projects p {
+  margin: 18px 0 25px;
+
+  color: #8fa2c2;
+
+  font-size: 18px;
+}
+
+.create-project-button {
+  border: none;
+
+  padding: 15px 26px;
+
+  border-radius: 13px;
+
+  background: #2864e8;
+
+  color: white;
+
+  font-size: 16px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+.create-project-button:hover {
+  background: #3974f5;
+  transform: translateY(-2px);
+}
+
+.create-project-button:active {
+  transform: scale(0.96);
+}
+
+/* =========================================
+   PROJECT LIST
+========================================= */
+
+.project-list {
+  width: 100%;
+}
+
+.project-row {
+  width: 100%;
+
+  min-height: 80px;
+
+  display: grid;
+
+  grid-template-columns: 1fr 180px;
+
+  align-items: center;
+
+  padding: 0 18px;
+
+  box-sizing: border-box;
+
+  border: none;
+  border-bottom: 1px solid #252e3d;
+
+  background: transparent;
+
+  color: white;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+.project-row:hover {
+  background: #111a29;
+}
+
+.project-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.folder-icon {
+  width: 44px;
+  height: 44px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: #172033;
+
+  font-size: 22px;
+}
+
+.project-info strong {
+  display: block;
+  font-size: 16px;
+}
+
+.project-info small {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #7f8da6;
+}
+
+.project-date {
+  color: #8fa2c2;
+  font-size: 14px;
+}
+
+/* =========================================
+   MODAL OVERLAY
+========================================= */
+
+.modal-overlay {
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 9999;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  box-sizing: border-box;
+
+  background: rgba(0, 0, 0, 0.72);
+
+  backdrop-filter: blur(5px);
+}
+
+/* =========================================
+   MODAL
+========================================= */
+
+.create-modal {
+  width: min(700px, 100%);
+
+  max-height: 90vh;
+
+  overflow-y: auto;
+
+  padding: 30px 32px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #303b4e;
+
+  border-radius: 18px;
+
+  background: #111824;
+
+  box-shadow:
+    0 25px 70px rgba(0, 0, 0, 0.55);
+}
+
+/* =========================================
+   MODAL HEADER
+========================================= */
+
+.modal-header {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 30px;
+}
+
+.modal-header h2 {
+  margin: 0;
+
+  font-size: 30px;
+}
+
+.close-modal {
+  width: 40px;
+  height: 40px;
+
+  border: none;
+
+  background: transparent;
+
+  color: white;
+
+  font-size: 34px;
+
+  line-height: 1;
+
+  cursor: pointer;
+
+  border-radius: 8px;
+}
+
+.close-modal:hover {
+  background: #202a3a;
+}
+
+/* =========================================
+   LABEL
+========================================= */
+
+.project-label {
+  display: block;
+
+  margin-bottom: 12px;
+
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* =========================================
+   INPUT
+========================================= */
+
+.project-input {
+  width: 100%;
+  height: 64px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  padding: 0 18px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #3b475b;
+
+  border-radius: 14px;
+
+  background: #111824;
+}
+
+.project-input span {
+  font-size: 22px;
+}
+
+.project-input input {
+  width: 100%;
+
+  border: none;
+  outline: none;
+
+  background: transparent;
+
+  color: white;
+
+  font-size: 18px;
+}
+
+.project-input input::placeholder {
+  color: #8995a9;
+}
+
+/* =========================================
+   INFO BOX
+========================================= */
+
+.project-info-box {
+  margin-top: 25px;
+
+  display: flex;
+
+  align-items: flex-start;
+
+  gap: 16px;
+
+  padding: 22px;
+
+  border-radius: 16px;
+
+  background: #1a2230;
+}
+
+.info-icon {
+  font-size: 23px;
+}
+
+.project-info-box p {
+  margin: 0;
+
+  color: #a9b8ce;
+
+  font-size: 17px;
+
+  line-height: 1.6;
+}
+
+/* =========================================
+   MEMORY
+========================================= */
+
+.memory-section {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  margin-top: 30px;
+}
+
+.memory-section label {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.memory-section select {
+  min-width: 190px;
+
+  padding: 12px 15px;
+
+  border: 1px solid #3b475b;
+
+  border-radius: 10px;
+
+  background: #111824;
+
+  color: white;
+
+  outline: none;
+
+  cursor: pointer;
+
+  font-size: 15px;
+}
+
+/* =========================================
+   MODAL FOOTER
+========================================= */
+
+.modal-footer {
+  display: flex;
+
+  justify-content: flex-end;
+
+  margin-top: 35px;
+}
+
+.modal-create {
+  min-width: 170px;
+
+  padding: 15px 24px;
+
+  border: none;
+
+  border-radius: 28px;
+
+  background: #667080;
+
+  color: #dfe5ed;
+
+  font-size: 16px;
+  font-weight: 700;
+
+  cursor: not-allowed;
+}
+
+.modal-create.active {
+  background: #ffffff;
+
+  color: #000000;
+
+  cursor: pointer;
+}
+
+.modal-create.active:hover {
+  background: #e8edf5;
+  transform: translateY(-1px);
+}
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width: 900px) {
+
+  .library-page {
+    padding: 30px 25px;
+  }
+
+  .library-header {
+    flex-direction: column;
+    margin-bottom: 45px;
+  }
+
+  .library-actions {
+    width: 100%;
+  }
+
+  .search-box {
+    flex: 1;
+    width: auto;
+  }
+
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 600px) {
+
+  .library-page {
+    padding: 22px 15px;
+  }
+
+  .library-title h1 {
+    font-size: 34px;
+  }
+
+  .library-title p {
+    font-size: 16px;
+    margin-top: 12px;
+  }
+
+  .library-actions {
+    width: 100%;
+  }
+
+  .search-box {
+    height: 48px;
+    padding: 0 14px;
+  }
+
+  .search-box input {
+    font-size: 14px;
+  }
+
+  .new-project-button {
+    height: 48px;
+    padding: 0 17px;
+  }
+
+  .library-tabs {
+    gap: 5px;
+    margin-bottom: 25px;
+  }
+
+  .library-tab {
+    padding: 11px 14px;
+    font-size: 14px;
+  }
+
+  .project-header {
+    grid-template-columns: 1fr 80px;
+    font-size: 14px;
+  }
+
+  .project-row {
+    grid-template-columns: 1fr 75px;
+    min-height: 70px;
+  }
+
+  .project-info {
+    gap: 10px;
+  }
+
+  .folder-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 18px;
+  }
+
+  .project-info strong {
+    font-size: 14px;
+  }
+
+  .project-info small {
+    font-size: 11px;
+  }
+
+  .project-date {
+    font-size: 11px;
+  }
+
+  /* MODAL */
+
+  .modal-overlay {
+    padding: 12px;
+    align-items: center;
+  }
+
+  .create-modal {
+    padding: 22px 18px;
+    border-radius: 16px;
+  }
+
+  .modal-header {
+    margin-bottom: 22px;
+  }
+
+  .modal-header h2 {
+    font-size: 24px;
+  }
+
+  .project-input {
+    height: 56px;
+  }
+
+  .project-input input {
+    font-size: 15px;
+  }
+
+  .project-info-box {
+    padding: 16px;
+  }
+
+  .project-info-box p {
+    font-size: 14px;
+  }
+
+  .memory-section {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .memory-section select {
+    width: 100%;
+  }
+
+  .modal-footer {
+    margin-top: 25px;
+  }
+
+  .modal-create {
+    width: 100%;
+  }
+
+  .empty-projects {
+    min-height: 360px;
+  }
+
+}

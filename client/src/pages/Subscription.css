@@ -1,0 +1,814 @@
+.subscription-page {
+  width: 100%;
+  min-height: 100%;
+  padding: 30px;
+  background: #f6f7fb;
+}
+
+.subscription-header {
+  width: 100%;
+  margin-bottom: 30px;
+}
+
+.subscription-title-area {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.subscription-main-icon {
+  width: 55px;
+  height: 55px;
+
+  border-radius: 15px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #eef2ff;
+
+  font-size: 25px;
+}
+
+.subscription-header h1 {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.subscription-header p {
+  margin: 6px 0 0;
+
+  color: #6b7280;
+
+  font-size: 14px;
+}
+
+/* =========================================
+   PLANS GRID
+========================================= */
+
+.plans-grid {
+  width: 100%;
+  max-width: 1320px;
+
+  margin: 0 auto;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 24px;
+}
+
+/* =========================================
+   PLAN CARD
+========================================= */
+
+.plan-card {
+  position: relative;
+
+  width: 100%;
+
+  background: #ffffff;
+
+  border: 1px solid #dfe2ee;
+
+  border-radius: 18px;
+
+  padding: 26px 22px 20px;
+
+  min-height: 500px;
+
+  display: flex;
+  flex-direction: column;
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+
+  overflow: visible;
+}
+
+.plan-card:hover {
+  transform: translateY(-6px);
+
+  box-shadow:
+    0 15px 35px
+    rgba(15, 23, 42, 0.10);
+}
+
+/* =========================================
+   POPULAR PLAN
+========================================= */
+
+.popular-plan {
+  border: 2px solid #6761eb;
+  box-shadow: 0 18px 30px rgba(99, 102, 241, 0.08);
+}
+
+.popular-badge {
+  position: absolute;
+
+  top: -13px;
+
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  padding: 6px 16px;
+
+  background: linear-gradient(135deg, #6c63f6, #5b4fe7);
+
+  color: #ffffff;
+
+  border-radius: 18px;
+
+  font-size: 10px;
+
+  font-weight: 800;
+
+  letter-spacing: 0.04em;
+
+  white-space: nowrap;
+}
+
+/* =========================================
+   PLAN ICON
+========================================= */
+
+.plan-icon {
+  width: 52px;
+  height: 52px;
+
+  border-radius: 15px;
+
+  background: #eef2ff;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  font-size: 24px;
+
+  margin-bottom: 18px;
+}
+
+/* =========================================
+   PLAN NAME
+========================================= */
+
+.plan-card h2 {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 23px;
+
+  font-weight: 800;
+}
+
+/* =========================================
+   DESCRIPTION
+========================================= */
+
+.plan-description {
+  margin: 7px 0 0;
+
+  color: #6b7280;
+
+  font-size: 13px;
+
+  line-height: 1.5;
+
+  min-height: 40px;
+}
+
+/* =========================================
+   PRICE
+========================================= */
+
+.plan-price {
+  margin: 22px 0 26px;
+
+  display: flex;
+
+  align-items: end;
+
+  gap: 8px;
+
+  line-height: 1;
+}
+
+.plan-price span {
+  color: #111827;
+
+  font-size: 42px;
+
+  font-weight: 800;
+
+  position: relative;
+}
+
+.plan-price-strike {
+  color: #111827;
+
+  font-size: 42px;
+
+  font-weight: 800;
+
+  opacity: 0.85;
+
+  text-decoration: line-through;
+
+  text-decoration-thickness: 3px;
+
+  text-decoration-color: rgba(17, 24, 39, 0.5);
+}
+
+.plan-price-final {
+  color: #111827;
+
+  font-size: 42px;
+
+  font-weight: 800;
+}
+
+.plan-price small {
+  color: #6b7280;
+
+  font-size: 13px;
+
+  padding-bottom: 9px;
+}
+
+/* =========================================
+   FEATURES
+========================================= */
+
+.features {
+  flex: 1;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 13px;
+}
+
+.feature {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  color: #374151;
+
+  font-size: 14px;
+
+  line-height: 1.4;
+}
+
+.check-icon {
+  width: 20px;
+  height: 20px;
+
+  flex-shrink: 0;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  background: #dcfce7;
+
+  color: #16a34a;
+
+  border-radius: 50%;
+
+  font-size: 12px;
+
+  font-weight: 800;
+}
+
+/* =========================================
+   SUBSCRIBE BUTTON
+========================================= */
+
+.subscribe-btn {
+  width: 100%;
+
+  margin-top: 24px;
+
+  padding: 14px 16px;
+
+  border-radius: 12px;
+
+  border: 1px solid #5b4fe7;
+
+  background: #ffffff;
+
+  color: #4f46e5;
+
+  font-size: 16px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+.subscribe-btn:hover {
+  background: #eef2ff;
+}
+
+.popular-button {
+  background: linear-gradient(135deg, #6c63f6, #5b4fe7);
+
+  border-color: #5b4fe7;
+
+  color: #ffffff;
+
+  box-shadow: 0 8px 20px rgba(91, 79, 231, 0.2);
+}
+
+.popular-button:hover {
+  background: #4f46e5;
+}
+
+/* =========================================
+   PAYMENT OVERLAY
+========================================= */
+
+.payment-overlay {
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 99999;
+
+  background:
+    rgba(15, 23, 42, 0.70);
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  overflow-y: auto;
+}
+
+/* =========================================
+   PAYMENT MODAL
+========================================= */
+
+.payment-modal {
+  position: relative;
+
+  width: 100%;
+
+  max-width: 470px;
+
+  background: #ffffff;
+
+  border-radius: 20px;
+
+  padding: 30px;
+
+  box-shadow:
+    0 25px 70px
+    rgba(0, 0, 0, 0.25);
+
+  animation:
+    modalOpen 0.2s ease;
+}
+
+@keyframes modalOpen {
+  from {
+    opacity: 0;
+
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+
+    transform: scale(1);
+  }
+}
+
+/* =========================================
+   CLOSE
+========================================= */
+
+.close-payment {
+  position: absolute;
+
+  right: 15px;
+
+  top: 15px;
+
+  width: 36px;
+  height: 36px;
+
+  border: none;
+
+  border-radius: 50%;
+
+  background: #f3f4f6;
+
+  color: #374151;
+
+  font-size: 25px;
+
+  line-height: 1;
+
+  cursor: pointer;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+}
+
+.close-payment:hover {
+  background: #e5e7eb;
+}
+
+/* =========================================
+   PAYMENT HEADER
+========================================= */
+
+.payment-header {
+  text-align: center;
+
+  margin-bottom: 22px;
+}
+
+.payment-modal-icon {
+  width: 55px;
+  height: 55px;
+
+  margin: 0 auto 12px;
+
+  border-radius: 15px;
+
+  background: #eef2ff;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  font-size: 24px;
+}
+
+.payment-header h2 {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 21px;
+}
+
+.payment-header p {
+  margin: 7px 0 0;
+
+  color: #6b7280;
+
+  font-size: 14px;
+}
+
+.payment-header strong {
+  color: #4f46e5;
+}
+
+/* =========================================
+   PAYMENT METHODS
+========================================= */
+
+.payment-methods {
+  display: grid;
+
+  grid-template-columns: repeat(3, 1fr);
+
+  gap: 10px;
+
+  margin-bottom: 20px;
+}
+
+.method {
+  padding: 12px;
+
+  border: 1px solid #d1d5db;
+
+  background: #ffffff;
+
+  border-radius: 10px;
+
+  cursor: pointer;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  color: #374151;
+
+  font-size: 14px;
+
+  font-weight: 700;
+}
+
+.method:hover {
+  border-color: #6366f1;
+}
+
+.active-method {
+  background: #eef2ff;
+
+  border-color: #6366f1;
+
+  color: #4f46e5;
+}
+
+/* =========================================
+   FORM
+========================================= */
+
+.payment-modal form {
+  display: flex;
+
+  flex-direction: column;
+}
+
+.payment-modal label {
+  margin-bottom: 7px;
+
+  color: #374151;
+
+  font-size: 13px;
+
+  font-weight: 700;
+}
+
+.payment-modal input {
+  width: 100%;
+
+  padding: 13px;
+
+  margin-bottom: 16px;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 9px;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  font-size: 14px;
+
+  outline: none;
+}
+
+.payment-modal input:focus {
+  border-color: #6366f1;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(99, 102, 241, 0.10);
+}
+
+/* =========================================
+   CARD ROW
+========================================= */
+
+.card-row {
+  display: grid;
+
+  grid-template-columns: 1fr 1fr;
+
+  gap: 14px;
+}
+
+.card-field {
+  min-width: 0;
+}
+
+/* =========================================
+   UPI
+========================================= */
+
+.upi-example {
+  margin-top: -8px;
+
+  margin-bottom: 15px;
+
+  color: #9ca3af;
+
+  font-size: 12px;
+}
+
+/* =========================================
+   AMOUNT
+========================================= */
+
+.amount-box {
+  margin: 4px 0 15px;
+
+  padding: 14px;
+
+  background: #f8fafc;
+
+  border-radius: 10px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+}
+
+.amount-box span {
+  color: #6b7280;
+
+  font-size: 14px;
+}
+
+.amount-box strong {
+  color: #111827;
+
+  font-size: 20px;
+}
+
+/* =========================================
+   PAY BUTTON
+========================================= */
+
+.pay-button {
+  width: 100%;
+
+  border: none;
+
+  border-radius: 10px;
+
+  padding: 14px;
+
+  background: #6366f1;
+
+  color: #ffffff;
+
+  font-size: 15px;
+
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.pay-button:hover {
+  background: #4f46e5;
+}
+
+/* =========================================
+   SECURE
+========================================= */
+
+.secure-payment {
+  margin-top: 15px;
+
+  text-align: center;
+
+  color: #9ca3af;
+
+  font-size: 12px;
+}
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width: 1200px) {
+
+  .plans-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    max-width: 760px;
+  }
+
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 700px) {
+
+  .subscription-page {
+    padding: 20px 15px;
+  }
+
+  .subscription-title-area {
+    align-items: flex-start;
+  }
+
+  .subscription-main-icon {
+    width: 45px;
+    height: 45px;
+
+    font-size: 20px;
+  }
+
+  .subscription-header h1 {
+    font-size: 25px;
+  }
+
+  .subscription-header p {
+    font-size: 13px;
+  }
+
+  .plans-grid {
+    grid-template-columns: 1fr;
+
+    gap: 18px;
+  }
+
+  .plan-card {
+    min-height: auto;
+
+    padding: 24px 20px;
+  }
+
+  .plan-price span {
+    font-size: 38px;
+  }
+
+  .popular-plan {
+    transform: none;
+  }
+
+  .popular-plan:hover {
+    transform: translateY(-6px);
+  }
+
+}
+
+/* =========================================
+   SMALL MOBILE
+========================================= */
+
+@media (max-width: 480px) {
+
+  .subscription-page {
+    padding: 15px 10px;
+  }
+
+  .subscription-title-area {
+    gap: 10px;
+  }
+
+  .subscription-header h1 {
+    font-size: 22px;
+  }
+
+  .subscription-header p {
+    font-size: 12px;
+  }
+
+  .plan-price span {
+    font-size: 32px;
+  }
+
+  .payment-overlay {
+    padding: 10px;
+  }
+
+  .payment-modal {
+    padding: 25px 17px;
+
+    border-radius: 16px;
+  }
+
+  .payment-header h2 {
+    font-size: 19px;
+  }
+
+  .card-row {
+    grid-template-columns: 1fr;
+
+    gap: 0;
+  }
+
+}

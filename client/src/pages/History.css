@@ -1,0 +1,175 @@
+.history-page {
+  width: 100%;
+  min-height: 100vh;
+
+  padding: 30px;
+
+  background: #f5f7fb;
+  box-sizing: border-box;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 30px;
+}
+
+.history-header h1 {
+  margin: 0;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  font-size: 30px;
+  color: #111827;
+}
+
+.history-header h1 svg {
+  color: #6366f1;
+}
+
+.history-header p {
+  margin-top: 8px;
+
+  color: #6b7280;
+}
+
+
+.clear-history {
+  border: none;
+
+  background: #ef4444;
+  color: white;
+
+  padding: 12px 18px;
+
+  border-radius: 8px;
+
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  font-size: 14px;
+}
+
+.clear-history:hover {
+  background: #dc2626;
+}
+
+
+/* History Cards */
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+
+  gap: 15px;
+}
+
+.history-card {
+  background: white;
+
+  border-radius: 12px;
+
+  padding: 18px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 15px;
+
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.06);
+
+  transition: 0.3s;
+}
+
+.history-card:hover {
+  transform: translateY(-2px);
+}
+
+.history-icon {
+  width: 45px;
+  height: 45px;
+
+  border-radius: 50%;
+
+  background: #eef2ff;
+
+  color: #6366f1;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.history-content {
+  flex: 1;
+}
+
+.history-content h3 {
+  margin: 0 0 6px;
+
+  font-size: 17px;
+
+  color: #1f2937;
+}
+
+.history-content p {
+  margin: 0;
+
+  color: #9ca3af;
+
+  font-size: 13px;
+}
+
+.delete-btn {
+  border: none;
+
+  background: transparent;
+
+  color: #ef4444;
+
+  font-size: 16px;
+
+  cursor: pointer;
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 600px) {
+
+  .history-page {
+    padding: 20px 15px;
+  }
+
+  .history-header {
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .history-header h1 {
+    font-size: 24px;
+  }
+
+  .clear-history {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .history-card {
+    padding: 14px;
+  }
+
+  .history-content h3 {
+    font-size: 15px;
+  }
+
+}
