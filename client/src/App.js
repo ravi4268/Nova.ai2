@@ -37,6 +37,14 @@ function App() {
   const [sidebarOpen, setSidebarOpen] =
     useState(false);
 
+  const [currentPlan, setCurrentPlan] =
+    useState(() => localStorage.getItem("novaPlan") || "Free");
+
+  const activatePlan = (planName) => {
+    setCurrentPlan(planName);
+    localStorage.setItem("novaPlan", planName);
+  };
+
   // =========================================
   // CHAT
   // =========================================
@@ -798,7 +806,7 @@ function App() {
               </strong>
 
               <small>
-                Free Plan
+                {currentPlan} Plan
               </small>
             </div>
 
@@ -1361,7 +1369,7 @@ function App() {
 
           {page ===
             "subscription" && (
-            <Subscription />
+            <Subscription onPlanActivated={activatePlan} />
           )}
 
           {/* =================================

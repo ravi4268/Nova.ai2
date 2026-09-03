@@ -1,11 +1,30 @@
 import React, { useState } from "react";
 import "./Subscription.css";
 
-function Subscription() {
+const API_URL =
+  process.env.REACT_APP_API_URL ||
+  (process.env.NODE_ENV === "production" ? "" : "http://localhost:5001");
+
+async function readApiResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    throw new Error("Payment server is unavailable. Please restart the backend and try again.");
+  }
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Payment request failed");
+  return data;
+}
+
+function Subscription({ onPlanActivated }) {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("phone");
   const [paymentDone, setPaymentDone] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const [upiId, setUpiId] = useState("novaai@upi");
 
   const openPhonePayment = () => {
@@ -93,6 +112,9 @@ function Subscription() {
     setPaymentDone(false);
     setPaymentMethod("phone");
     setPhoneNumber("");
+    setOtp("");
+    setOtpSent(false);
+    setPaymentError("");
     setUpiId("novaai@upi");
   };
 
@@ -103,21 +125,45 @@ function Subscription() {
 
   const handlePayment = (e) => {
     e.preventDefault();
-
-    if (paymentMethod === "phone") {
-      openPhonePayment();
+    if (paymentMethod !== "phone") {
+      setPaymentDone(true);
+      onPlanActivated?.(selectedPlan.name);
+      return;
     }
 
-    setPaymentDone(true);
+    setPaymentLoading(true);
+    setPaymentError("");
+    fetch(`${API_URL}/api/payment/send-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: phoneNumber }),
+    })
+      .then(async (response) => {
+        const data = await readApiResponse(response);
+        if (data.demoOtp) alert(`Demo OTP: ${data.demoOtp}`);
+        setOtpSent(true);
+        openPhonePayment();
+      })
+      .catch((error) => setPaymentError(error.message))
+      .finally(() => setPaymentLoading(false));
+  };
 
-    setTimeout(() => {
-      alert(
-        `${selectedPlan.name} plan selected successfully!`
-      );
-
-      setSelectedPlan(null);
-      setPaymentDone(false);
-    }, 1200);
+  const verifyOtp = (e) => {
+    e.preventDefault();
+    setPaymentLoading(true);
+    setPaymentError("");
+    fetch(`${API_URL}/api/payment/verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: phoneNumber, otp }),
+    })
+      .then(async (response) => {
+        await readApiResponse(response);
+        setPaymentDone(true);
+        onPlanActivated?.(selectedPlan.name);
+      })
+      .catch((error) => setPaymentError(error.message))
+      .finally(() => setPaymentLoading(false));
   };
 
   return (
@@ -277,7 +323,7 @@ function Subscription() {
         >
 
           <div
-            className="payment-modal"
+            className={`payment-modal ${paymentDone ? "payment-modal-success" : ""}`}
             onClick={(e) =>
               e.stopPropagation()
             }
@@ -369,7 +415,7 @@ function Subscription() {
                 {/* FORM */}
 
                 <form
-                  onSubmit={handlePayment}
+                  onSubmit={otpSent && paymentMethod === "phone" ? verifyOtp : handlePayment}
                 >
 
                   {paymentMethod === "phone" ? (
@@ -394,6 +440,26 @@ function Subscription() {
                       <p className="upi-example">
                         This will open your UPI app on your Motorola G15 and complete payment from your phone.
                       </p>
+
+                      {otpSent && (
+                        <>
+                          <label>
+                            OTP sent to your phone
+                          </label>
+
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            placeholder="Enter 6-digit OTP"
+                            value={otp}
+                            onChange={(e) =>
+                              setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                            }
+                            required
+                          />
+                        </>
+                      )}
                     </>
 
                   ) : paymentMethod === "upi" ? (
@@ -497,9 +563,20 @@ function Subscription() {
                   <button
                     type="submit"
                     className="pay-button"
+                    disabled={paymentLoading}
                   >
-                    Pay ₹{selectedPlan.paymentPrice || selectedPlan.price}
+                    {paymentLoading
+                      ? "Please wait..."
+                      : otpSent && paymentMethod === "phone"
+                        ? "Verify OTP"
+                        : `Pay ₹${selectedPlan.paymentPrice || selectedPlan.price}`}
                   </button>
+
+                  {paymentError && (
+                    <p className="payment-error">
+                      {paymentError}
+                    </p>
+                  )}
 
                   <p className="secure-payment">
                     🔒 Secure payment powered by

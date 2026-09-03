@@ -4,6 +4,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const dotenv = require("dotenv");
+const crypto = require("crypto");
 const { Configuration, OpenAIApi } = require("openai");
 
 dotenv.config({
@@ -15,6 +16,7 @@ const app = express();
 const DEFAULT_PORT = Number(process.env.PORT) || 5000;
 const PORT = DEFAULT_PORT;
 const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+const paymentOtps = new Map();
 
 // ========================================
 // OPENAI SETUP
@@ -44,6 +46,81 @@ app.use(
 
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true }));
+
+function normalizeIndianPhone(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  return digits.length === 10 && /^[6-9]/.test(digits) ? `+91${digits}` : null;
+}
+
+async function sendSms(phone, otp) {
+  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_FROM_NUMBER) {
+    return false;
+  }
+
+  const credentials = Buffer.from(
+    `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
+  ).toString("base64");
+  const body = new URLSearchParams({
+    To: phone,
+    From: process.env.TWILIO_FROM_NUMBER,
+    Body: `Your Nova AI payment OTP is ${otp}. It expires in 10 minutes.`,
+  });
+  const response = await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    }
+  );
+
+  if (!response.ok) throw new Error("SMS provider rejected the OTP request");
+  return true;
+}
+
+app.post("/api/payment/send-otp", async (req, res) => {
+  const phone = normalizeIndianPhone(req.body.phone);
+  if (!phone) {
+    return res.status(400).json({ success: false, error: "Enter a valid 10-digit Indian mobile number" });
+  }
+
+  const otp = String(crypto.randomInt(100000, 1000000));
+  paymentOtps.set(phone, {
+    hash: crypto.createHash("sha256").update(otp).digest("hex"),
+    expiresAt: Date.now() + 10 * 60 * 1000,
+    attempts: 0,
+  });
+
+  try {
+    const smsSent = await sendSms(phone, otp);
+    return res.json({ success: true, smsSent, demoOtp: smsSent ? undefined : otp });
+  } catch (error) {
+    paymentOtps.delete(phone);
+    return res.status(502).json({ success: false, error: "Could not send OTP SMS" });
+  }
+});
+
+app.post("/api/payment/verify-otp", (req, res) => {
+  const phone = normalizeIndianPhone(req.body.phone);
+  const record = paymentOtps.get(phone);
+  const submittedHash = crypto.createHash("sha256").update(String(req.body.otp || "")).digest("hex");
+
+  if (!record || Date.now() > record.expiresAt || record.attempts >= 5) {
+    paymentOtps.delete(phone);
+    return res.status(400).json({ success: false, error: "OTP expired. Please request a new OTP" });
+  }
+
+  record.attempts += 1;
+  if (submittedHash !== record.hash) {
+    return res.status(400).json({ success: false, error: "Incorrect OTP" });
+  }
+
+  paymentOtps.delete(phone);
+  return res.json({ success: true });
+});
 
 // ========================================
 // UPLOAD DIRECTORY

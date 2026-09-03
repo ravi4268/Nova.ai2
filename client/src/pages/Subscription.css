@@ -393,6 +393,15 @@
     modalOpen 0.2s ease;
 }
 
+.payment-modal-success {
+  background: #000000;
+}
+
+.payment-modal-success .close-payment {
+  background: #262626;
+  color: #ffffff;
+}
+
 @keyframes modalOpen {
   from {
     opacity: 0;
@@ -680,6 +689,36 @@
 
 .pay-button:hover {
   background: #4f46e5;
+}
+
+.pay-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.payment-error {
+  margin: 12px 0 0;
+  color: #c0392b;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.payment-success {
+  color: #111827;
+  text-align: center;
+}
+
+.payment-success h2,
+.payment-success p,
+.payment-success strong {
+  color: #111827;
+}
+
+.payment-modal-success .payment-success,
+.payment-modal-success .payment-success h2,
+.payment-modal-success .payment-success p,
+.payment-modal-success .payment-success strong {
+  color: #ffffff;
 }
 
 /* =========================================
