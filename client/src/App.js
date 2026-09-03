@@ -504,7 +504,7 @@ function App() {
           ...updated[lastIndex],
 
           ai:
-            "⚠️ Nova AI backend is not connected. Please start your backend with `node server.js` and check your OPENAI_API_KEY.",
+            "⚠️ Nova AI backend is not connected. Please start your backend with `node server.js` and check your GEMINI_API_KEY.",
         };
 
         return updated;

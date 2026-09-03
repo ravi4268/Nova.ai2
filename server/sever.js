@@ -5,7 +5,6 @@ const path = require("path");
 const fs = require("fs");
 const dotenv = require("dotenv");
 const crypto = require("crypto");
-const { Configuration, OpenAIApi } = require("openai");
 
 dotenv.config({
   path: path.join(__dirname, ".env"),
@@ -15,24 +14,18 @@ dotenv.config({
 const app = express();
 const DEFAULT_PORT = Number(process.env.PORT) || 5000;
 const PORT = DEFAULT_PORT;
-const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+const hasGeminiKey = !!process.env.GEMINI_API_KEY;
 const paymentOtps = new Map();
 
 // ========================================
-// OPENAI SETUP
+// GEMINI SETUP
 // ========================================
 
-if (!hasOpenAIKey) {
-  console.warn("⚠️ OPENAI_API_KEY is missing in .env - demo mode enabled");
+if (!hasGeminiKey) {
+  console.warn("⚠️ GEMINI_API_KEY is missing in .env - demo mode enabled");
 }
 
-const openai = hasOpenAIKey
-  ? new OpenAIApi(
-      new Configuration({
-        apiKey: process.env.OPENAI_API_KEY,
-      })
-    )
-  : null;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
 // ========================================
 // MIDDLEWARE
@@ -204,10 +197,10 @@ app.get("/api/chat", (req, res) => {
 });
 
 // ========================================
-// CONVERT MESSAGES FOR OPENAI
+// CONVERT MESSAGES FOR GEMINI
 // ========================================
 
-function convertMessagesToOpenAI(messages, currentMessage) {
+function convertMessagesToGemini(messages, currentMessage) {
   const result = [];
 
   // Add previous messages
@@ -215,18 +208,18 @@ function convertMessagesToOpenAI(messages, currentMessage) {
     for (const msg of messages) {
       if (msg.role && msg.content) {
         result.push({
-          role: msg.role === "assistant" ? "assistant" : "user",
-          content: String(msg.content),
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: String(msg.content) }],
         });
       } else if (msg.user) {
         result.push({
           role: "user",
-          content: String(msg.user),
+          parts: [{ text: String(msg.user) }],
         });
       } else if (msg.ai) {
         result.push({
-          role: "assistant",
-          content: String(msg.ai),
+          role: "model",
+          parts: [{ text: String(msg.ai) }],
         });
       }
     }
@@ -236,12 +229,32 @@ function convertMessagesToOpenAI(messages, currentMessage) {
   if (currentMessage) {
     result.push({
       role: "user",
-      content: currentMessage,
+      parts: [{ text: currentMessage }],
     });
   }
 
   // Keep only last 20 exchanges (40 messages)
   return result.slice(-40);
+}
+
+function isWeatherRequest(message) {
+  return /\b(weather|temperature|forecast|rain|raining|barish|baarish|mausam|mosam|मौसम|तापमान|बारिश)\b/i.test(message);
+}
+
+async function getJaipurWeather() {
+  const response = await fetch(
+    "https://api.open-meteo.com/v1/forecast?latitude=26.9124&longitude=75.7873&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,rain,showers,precipitation&hourly=precipitation_probability&forecast_days=1&timezone=Asia%2FKolkata"
+  );
+
+  if (!response.ok) throw new Error("Weather service unavailable");
+  const data = await response.json();
+  const current = data.current;
+  const rainProbability = Math.max(...(data.hourly?.precipitation_probability || [0]));
+  const rainExpected = rainProbability >= 40 || current.rain > 0 || current.showers > 0 || current.precipitation > 0;
+  const weatherVerdict = rainExpected || current.temperature_2m >= 40
+    ? "Overall: weather may not be ideal for outdoor plans."
+    : "Overall: weather looks suitable for outdoor plans.";
+  return `Live weather in Jaipur today: ${current.temperature_2m}°C, feels like ${current.apparent_temperature}°C, humidity ${current.relative_humidity_2m}%, wind ${current.wind_speed_10m} km/h. Rain forecast: ${rainExpected ? "Yes, rain is possible today" : "No significant rain expected today"}; maximum rain probability ${rainProbability}%; current rain ${current.rain} mm, showers ${current.showers} mm. ${weatherVerdict} For another country or city, ask with its exact name.`;
 }
 
 function createLocalReply(message, file, image) {
@@ -259,6 +272,11 @@ function createLocalReply(message, file, image) {
 
   if (/\b(show|give|write|send|provide)\b.*\b(code|example|snippet)\b|\b(code|example|snippet)\b.*\b(react|javascript|html|css|python)\b/.test(lowerText)) {
     return "React example:\n\nfunction Welcome({ name }) {\n  return <h1>Hello, {name}!</h1>;\n}\n\nexport default Welcome;\n\nUse it like this: <Welcome name=\"Aisha\" />. Tell me the exact feature and I can provide complete code.";
+  }
+
+  if (/\b(define|definition|what is|meaning|kya hai|explain)\b/.test(lowerText) &&
+      /\b(sql|python|node\.?js)\b/.test(lowerText)) {
+    return "Definitions:\n\nSQL (Structured Query Language) is a language used to create, read, update, and delete data in relational databases such as MySQL and PostgreSQL.\n\nPython is a high-level, easy-to-read programming language used for web development, automation, data science, AI, and scripting.\n\nNode.js is a runtime that lets developers execute JavaScript outside the browser, commonly on servers for APIs, web apps, and real-time applications.";
   }
 
   if (/\b(react|react\.js|jsx|component|hook|usestate|useeffect)\b/.test(lowerText)) {
@@ -307,6 +325,10 @@ function createLocalReply(message, file, image) {
 
   if (/\b(sql|mysql|postgres|postgresql|database|query|mongodb)\b/.test(lowerText)) {
     return "Databases store and organize application data. For SQL, learn SELECT, INSERT, UPDATE, DELETE, JOINs, indexes, constraints, and transactions. Use parameterized queries and least-privilege database accounts for security.";
+  }
+
+  if (/\b(difference|differences|compare|comparison|difference between)\b/.test(lowerText) && /\b(sql|mongodb|python|node\.?js|javascript|react\.?js)\b/.test(lowerText)) {
+    return "Quick differences:\n\nSQL vs MongoDB: SQL is relational and stores structured data in tables with schemas and joins. MongoDB is a NoSQL document database that stores flexible JSON-like documents and is useful when data shape changes often.\n\nPython vs Node.js: Python is a programming language known for readability, automation, data science, and backend development. Node.js is a JavaScript runtime designed for running JavaScript on servers, especially for fast I/O and real-time APIs.\n\nJavaScript vs React.js: JavaScript is the programming language. React.js is a JavaScript library for building user interfaces with components, props, and state. React needs JavaScript, but JavaScript does not require React.";
   }
 
   if (/\b(git|github|version control|commit|branch|merge|pull request)\b/.test(lowerText)) {
@@ -362,42 +384,65 @@ async function generateAIResponse({
 
   const messageForAI = userText || "Please describe the uploaded image or file.";
 
-  if (!hasOpenAIKey || !openai) {
+  let weatherContext = "";
+  if (isWeatherRequest(userText)) {
+    try {
+      weatherContext = await getJaipurWeather();
+    } catch (error) {
+      console.error("Weather Error:", error.message);
+    }
+  }
+
+  if (!hasGeminiKey) {
     return {
-      reply: createLocalReply(userText, file, image),
+      reply: weatherContext
+        ? `${weatherContext}\n\n${createLocalReply(userText, file, image)}`
+        : createLocalReply(userText, file, image),
     };
   }
 
-  const messages = convertMessagesToOpenAI(history, messageForAI);
+  const prompt = weatherContext
+    ? `${weatherContext}\n\nAnswer the user's weather question using this live data. Mention that it is current data for Jaipur.\n\nUser message: ${messageForAI}`
+    : messageForAI;
+  const messages = convertMessagesToGemini(history, prompt);
 
   // Add file info if provided
   if (file) {
     const lastMsg = messages[messages.length - 1];
     if (lastMsg) {
-      lastMsg.content += `\n\n📎 File uploaded: ${file.originalname}`;
+      lastMsg.parts[0].text += `\n\nFile uploaded: ${file.originalname}`;
     }
   }
 
   try {
-    const response = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo",
-      messages: messages,
-      temperature: 0.7,
-      max_tokens: 1000,
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: "You are Nova AI. Answer clearly and helpfully. Use the provided live weather data when available." }],
+          },
+          contents: messages,
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },
+        }),
+      }
+    );
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || "Gemini request failed");
+    const reply = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
+    if (!reply) throw new Error("Gemini returned an empty response");
 
     return {
-      reply: response.data.choices[0].message.content,
+      reply,
     };
   } catch (error) {
-    const status = error.response?.status;
-    const reason = status === 429
-      ? "OpenAI quota is exhausted or the account is not enabled for API billing"
-      : "OpenAI request failed";
-
-    console.error("OpenAI Error:", status || error.message);
+    console.error("Gemini Error:", error.message);
     return {
-      reply: createLocalReply(userText, file, image),
+      reply: weatherContext
+        ? `${weatherContext}\n\n${createLocalReply(userText, file, image)}`
+        : createLocalReply(userText, file, image),
     };
   } 
 }
