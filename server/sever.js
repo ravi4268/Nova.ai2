@@ -38,7 +38,7 @@ const openai = hasOpenAIKey
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: process.env.CLIENT_URL || true,
   })
 );
 
@@ -409,7 +409,7 @@ app.post(
           name: image.originalname,
 
           url:
-            `http://localhost:${PORT}/uploads/` +
+            `${req.protocol}://${req.get("host")}/uploads/` +
             image.filename,
         };
       }
@@ -425,7 +425,7 @@ app.post(
           name: file.originalname,
 
           url:
-            `http://localhost:${PORT}/uploads/` +
+            `${req.protocol}://${req.get("host")}/uploads/` +
             file.filename,
         };
       }
@@ -521,4 +521,8 @@ function startServer(port) {
   });
 }
 
-startServer(PORT);
+if (require.main === module) {
+  startServer(PORT);
+}
+
+module.exports = app;
