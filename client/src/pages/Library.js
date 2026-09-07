@@ -17,6 +17,7 @@ function Library() {
   const [projectName, setProjectName] = useState("");
   const [memory, setMemory] = useState("Default memory");
   const [search, setSearch] = useState("");
+  const [projectToDelete, setProjectToDelete] = useState(null);
 
   // =====================================
   // SAVE PROJECTS
@@ -128,6 +129,15 @@ function Library() {
 
   const openProject = (project) => {
     alert(`Opening project: ${project.name}`);
+  };
+
+  const deleteProject = () => {
+    if (!projectToDelete) return;
+
+    setProjects((prev) =>
+      prev.filter((project) => project.id !== projectToDelete.id)
+    );
+    setProjectToDelete(null);
   };
 
   return (
@@ -285,40 +295,52 @@ function Library() {
             {filteredProjects.map(
               (project) => (
 
-                <button
-                  type="button"
+                <div
                   className="project-row"
                   key={project.id}
-                  onClick={() =>
-                    openProject(project)
-                  }
                 >
 
-                  <div className="project-info">
+                  <button
+                    type="button"
+                    className="project-open"
+                    onClick={() => openProject(project)}
+                  >
+                    <div className="project-info">
 
-                    <div className="folder-icon">
-                      📁
+                      <div className="folder-icon">
+                        📁
+                      </div>
+
+                      <div>
+
+                        <strong>
+                          {project.name}
+                        </strong>
+
+                        <small>
+                          {project.type}
+                        </small>
+
+                      </div>
+
                     </div>
-
-                    <div>
-
-                      <strong>
-                        {project.name}
-                      </strong>
-
-                      <small>
-                        {project.type}
-                      </small>
-
-                    </div>
-
-                  </div>
+                  </button>
 
                   <span className="project-date">
                     {project.modified}
                   </span>
 
-                </button>
+                  <button
+                    type="button"
+                    className="delete-project"
+                    aria-label={`Delete ${project.name}`}
+                    title="Delete project"
+                    onClick={() => setProjectToDelete(project)}
+                  >
+                    🗑
+                  </button>
+
+                </div>
 
               )
             )}
@@ -465,6 +487,52 @@ function Library() {
 
         </div>
 
+      )}
+
+      {projectToDelete && (
+        <div
+          className="modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setProjectToDelete(null);
+            }
+          }}
+        >
+          <div className="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-project-title">
+            <div className="modal-header">
+              <h2 id="delete-project-title">Delete project?</h2>
+              <button
+                type="button"
+                className="close-modal"
+                onClick={() => setProjectToDelete(null)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            <p className="delete-message">
+              This will permanently delete <strong>{projectToDelete.name}</strong> and its project data.
+            </p>
+
+            <div className="delete-actions">
+              <button
+                type="button"
+                className="cancel-delete"
+                onClick={() => setProjectToDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="confirm-delete"
+                onClick={deleteProject}
+              >
+                Delete project
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
