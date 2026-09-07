@@ -16,7 +16,7 @@ async function readApiResponse(response) {
   return data;
 }
 
-function Subscription({ onPlanActivated }) {
+function Subscription({ currentPlan = "Free", onPlanActivated }) {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("phone");
   const [paymentDone, setPaymentDone] = useState(false);
@@ -205,7 +205,7 @@ function Subscription({ onPlanActivated }) {
           <div
             className={`plan-card ${
               plan.popular ? "popular-plan" : ""
-            }`}
+            } ${plan.name === currentPlan ? "active-plan" : ""}`}
             key={plan.id}
           >
 
@@ -300,7 +300,7 @@ function Subscription({ onPlanActivated }) {
                 openPayment(plan)
               }
             >
-              {plan.id === "free"
+              {plan.name === currentPlan
                 ? "Current Plan"
                 : "Subscribe"}
             </button>

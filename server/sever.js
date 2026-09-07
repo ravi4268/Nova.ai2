@@ -25,7 +25,7 @@ if (!hasGeminiKey) {
   console.warn("⚠️ GEMINI_API_KEY is missing in .env - demo mode enabled");
 }
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 // ========================================
 // MIDDLEWARE
@@ -237,8 +237,32 @@ function convertMessagesToGemini(messages, currentMessage) {
   return result.slice(-40);
 }
 
+function addImageToGeminiMessage(messages, image) {
+  if (!image || !messages.length) return;
+
+  const lastMessage = messages[messages.length - 1];
+  lastMessage.parts.push({
+    inlineData: {
+      mimeType: image.mimetype,
+      data: fs.readFileSync(image.path).toString("base64"),
+    },
+  });
+}
+
 function isWeatherRequest(message) {
   return /\b(weather|temperature|forecast|rain|raining|barish|baarish|mausam|mosam|मौसम|तापमान|बारिश)\b/i.test(message);
+}
+
+function isElectionRequest(message) {
+  return /\b(election|elections|vote|voting|voter|election date|when.*election|election.*kab|kab.*election|election.*hoga|hoga.*election|vote.*date|when.*vote)\b/i.test(message);
+}
+
+function isEnvironmentRequest(message) {
+  return /\b(environment|pollution|climate|global warming|save water|save earth|air pollution|water pollution|tree|trees|green energy|eco|plastic|recycling|sustainability|clean air|clean water|nature)\b/i.test(message);
+}
+
+function isGeneralKnowledgeRequest(message) {
+  return /\b(general knowledge|fact|facts|world knowledge|knowledge|who is|what is|where is|which country|capital|history|science|geography|quiz|information|learn)\b/i.test(message);
 }
 
 async function getJaipurWeather() {
@@ -275,8 +299,8 @@ function createLocalReply(message, file, image) {
   }
 
   if (/\b(define|definition|what is|meaning|kya hai|explain)\b/.test(lowerText) &&
-      /\b(sql|python|node\.?js)\b/.test(lowerText)) {
-    return "Definitions:\n\nSQL (Structured Query Language) is a language used to create, read, update, and delete data in relational databases such as MySQL and PostgreSQL.\n\nPython is a high-level, easy-to-read programming language used for web development, automation, data science, AI, and scripting.\n\nNode.js is a runtime that lets developers execute JavaScript outside the browser, commonly on servers for APIs, web apps, and real-time applications.";
+      /\b(sql|python|node\.?js|react\.?js?|javascript|js)\b/.test(lowerText)) {
+    return "Definitions:\n\nReact.js is a JavaScript library for building user interfaces from reusable components. It lets developers create interactive web pages by updating only the parts of the screen that change.\n\nJavaScript is a programming language used to add behavior and interactivity to web pages. It also runs outside the browser, through platforms such as Node.js, to build servers and APIs.\n\nSQL (Structured Query Language) is a language used to create, read, update, and delete data in relational databases such as MySQL and PostgreSQL.\n\nPython is a high-level, easy-to-read programming language used for web development, automation, data science, AI, and scripting.\n\nNode.js is a runtime that lets developers execute JavaScript outside the browser, commonly on servers for APIs, web apps, and real-time applications.";
   }
 
   if (/\b(react|react\.js|jsx|component|hook|usestate|useeffect)\b/.test(lowerText)) {
@@ -297,6 +321,18 @@ function createLocalReply(message, file, image) {
 
   if (/\b(quiz|mcq|question|exam|interview question|test me)\b/.test(lowerText)) {
     return "Quick quiz: Which React hook stores component state? A) useEffect B) useState C) useFetch D) useRoute. Reply with A, B, C, or D and I will check your answer.";
+  }
+
+  if (/\b(election|elections|vote|voting|voter|election date|when.*election|election.*kab|kab.*election|election.*hoga|hoga.*election)\b/.test(lowerText)) {
+    return "Election message to the whole world: The election date will be announced by the official election commission or government authority. Please check the official website and verified news sources for the exact schedule, voting process, and result dates. Follow only official updates before sharing any announcement.";
+  }
+
+  if (/\b(environment|pollution|climate|global warming|save water|save earth|air pollution|water pollution|tree|trees|green energy|eco|plastic|recycling|sustainability|clean air|clean water|nature)\b/.test(lowerText)) {
+    return "Environment message to everyone: Protect the environment by reducing plastic waste, saving water, planting more trees, using clean energy, and keeping air and water clean. A healthy environment is essential for all life on Earth, and every small action matters.";
+  }
+
+  if (/\b(general knowledge|fact|facts|world knowledge|knowledge|who is|what is|where is|which country|capital|history|science|geography|information|learn)\b/.test(lowerText)) {
+    return "General knowledge message: Learning is the key to understanding the world. Use trusted sources, ask questions, and keep exploring history, science, geography, technology, and current affairs to build strong knowledge and better decisions.";
   }
 
   if (/\b(world cup|worldcup|fifa|cricket world cup)\b/.test(lowerText)) {
@@ -414,6 +450,8 @@ async function generateAIResponse({
     }
   }
 
+  addImageToGeminiMessage(messages, image);
+
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`,
@@ -422,7 +460,7 @@ async function generateAIResponse({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemInstruction: {
-            parts: [{ text: "You are Nova AI. Answer clearly and helpfully. Use the provided live weather data when available." }],
+            parts: [{ text: "You are Nova AI, a helpful and accurate assistant. Answer every user message naturally and clearly. Use the provided live weather data when available. If an image is attached, inspect it and answer about its contents." }],
           },
           contents: messages,
           generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },

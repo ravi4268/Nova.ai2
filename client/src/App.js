@@ -4,6 +4,11 @@ import React, {
   useState,
 } from "react";
 
+import {
+  FiMic,
+  FiMicOff,
+} from "react-icons/fi";
+
 import "./styles.css";
 
 import Library from "./pages/Library";
@@ -74,6 +79,9 @@ function App() {
   const [backendError, setBackendError] =
     useState("");
 
+  const [isListening, setIsListening] =
+    useState(false);
+
   // =========================================
   // FILE / IMAGE
   // =========================================
@@ -99,6 +107,14 @@ function App() {
   const messagesEndRef =
     useRef(null);
 
+  const recognitionRef =
+    useRef(null);
+
+  const speechSupported =
+    typeof window !== "undefined" &&
+    ("SpeechRecognition" in window ||
+      "webkitSpeechRecognition" in window);
+
   // =========================================
   // SAVE CHAT
   // =========================================
@@ -109,6 +125,12 @@ function App() {
       JSON.stringify(messages)
     );
   }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, []);
 
   // =========================================
   // AUTO SCROLL
@@ -352,18 +374,23 @@ function App() {
     // BUILD HISTORY FOR AI
     // =======================================
 
-    const history =
-      oldMessages.map((item) => ({
-        role:
-          item.user
-            ? "user"
-            : "assistant",
+    const history = [];
 
-        content:
-          item.user ||
-          item.ai ||
-          "",
-      }));
+    oldMessages.forEach((item) => {
+      if (item.user?.trim()) {
+        history.push({
+          role: "user",
+          content: item.user.trim(),
+        });
+      }
+
+      if (item.ai?.trim() && item.ai !== "Thinking...") {
+        history.push({
+          role: "assistant",
+          content: item.ai.trim(),
+        });
+      }
+    });
 
     try {
       // =====================================
@@ -531,6 +558,49 @@ function App() {
 
       sendMessage();
     }
+  };
+
+  // Use the browser's speech recognition so spoken words fill the same input.
+  const toggleVoiceInput = () => {
+    if (!speechSupported) return;
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const SpeechRecognition =
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0].transcript)
+        .join("");
+
+      setMessage(transcript);
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      textareaRef.current?.focus();
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
   };
 
   // =========================================
@@ -1240,6 +1310,29 @@ function App() {
                     }
                   />
 
+                  {/* VOICE INPUT */}
+
+                  <button
+                    type="button"
+                    className={`mic-button${
+                      isListening ? " listening" : ""
+                    }`}
+                    onClick={toggleVoiceInput}
+                    disabled={!speechSupported}
+                    aria-label={
+                      isListening
+                        ? "Stop voice input"
+                        : "Start voice input"
+                    }
+                    title={
+                      speechSupported
+                        ? "Speak to type"
+                        : "Voice input is not supported in this browser"
+                    }
+                  >
+                    {isListening ? <FiMicOff /> : <FiMic />}
+                  </button>
+
                   {/* TEXTAREA */}
 
                   <textarea
@@ -1369,7 +1462,10 @@ function App() {
 
           {page ===
             "subscription" && (
-            <Subscription onPlanActivated={activatePlan} />
+            <Subscription
+              currentPlan={currentPlan}
+              onPlanActivated={activatePlan}
+            />
           )}
 
           {/* =================================

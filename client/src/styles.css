@@ -386,6 +386,7 @@ textarea {
 }
 
 .attach-button,
+.mic-button,
 .send-button {
   width: 43px;
   height: 43px;
@@ -396,6 +397,33 @@ textarea {
   color: #b8c2d2;
   cursor: pointer;
   font-size: 18px;
+}
+
+.mic-button {
+  display: grid;
+  place-items: center;
+}
+
+.mic-button:hover:not(:disabled) {
+  background: #1c2638;
+  color: white;
+}
+
+.mic-button.listening {
+  background: #7f1d35;
+  color: #ffb4c4;
+  animation: mic-pulse 1.4s ease-in-out infinite;
+}
+
+.mic-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+@keyframes mic-pulse {
+  50% {
+    box-shadow: 0 0 0 6px rgba(225, 29, 72, 0.16);
+  }
 }
 
 .send-button {
@@ -1100,6 +1128,11 @@ textarea {
   }
 
   .attach-button {
+    width: 35px;
+    min-width: 35px;
+  }
+
+  .mic-button {
     width: 35px;
     min-width: 35px;
   }
