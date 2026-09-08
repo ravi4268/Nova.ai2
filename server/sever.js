@@ -286,6 +286,16 @@ function createLocalReply(message, file, image) {
   const lowerText = text.toLowerCase();
   const attachment = file || image;
 
+  if (attachment && !text) {
+    if (image) {
+      const sizeInKb = Math.max(1, Math.round(image.size / 1024));
+      return `Image received: ${image.originalname}. Type: ${image.mimetype}. Size: ${sizeInKb} KB. I can analyze the image content, objects, text, colors, and visual details. Ask me what you want to know about it.`;
+    }
+
+    const sizeInKb = Math.max(1, Math.round(file.size / 1024));
+    return `File received: ${file.originalname}. Type: ${file.mimetype || "unknown"}. Size: ${sizeInKb} KB. Tell me whether you want a summary, key points, or help extracting information from it.`;
+  }
+
   if (/^(hi|hello|hey|salam)\b/.test(lowerText)) {
     return "Hello! How can I help you today?";
   }
@@ -395,10 +405,6 @@ function createLocalReply(message, file, image) {
     return "I can help troubleshoot it. Share what you are trying to do, the exact error or result, and the relevant code or steps. I will suggest a clear solution.";
   }
 
-  if (attachment && !text) {
-    return `I received your ${image ? "image" : "file"}. Please tell me what you would like me to do with it.`;
-  }
-
   return `I understand your message: "${text}". Please share a little more detail so I can help you better.`;
 }
 
@@ -460,7 +466,7 @@ async function generateAIResponse({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemInstruction: {
-            parts: [{ text: "You are Nova AI, a helpful and accurate assistant. Answer every user message naturally and clearly. Use the provided live weather data when available. If an image is attached, inspect it and answer about its contents." }],
+            parts: [{ text: "You are Nova AI, a helpful and accurate assistant. Answer every user message naturally and clearly. Use the provided live weather data when available. When an image is attached, inspect it carefully and include its image type or format, a concise description of what is visible, notable objects, readable text, colors, and any uncertainty. If the user asks about the image, answer that question directly. When only a file is attached, identify its file type and explain what information you can help extract." }],
           },
           contents: messages,
           generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },

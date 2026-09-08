@@ -516,6 +516,21 @@ textarea {
 .backend-image img {
   max-width: 350px;
   width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  border-radius: 12px;
+  margin-top: 8px;
+}
+
+.uploaded-image-box {
+  max-width: 350px;
+}
+
+.uploaded-image-box img {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+  object-fit: contain;
   border-radius: 12px;
   margin-top: 8px;
 }
@@ -1121,6 +1136,20 @@ textarea {
 
   .message-content {
     max-width: calc(100% - 48px);
+  }
+
+  .message-text {
+    overflow-wrap: anywhere;
+  }
+
+  .uploaded-image-box,
+  .backend-image {
+    max-width: 100%;
+  }
+
+  .uploaded-image-box img,
+  .backend-image img {
+    max-height: 280px;
   }
 
   .input-box {
