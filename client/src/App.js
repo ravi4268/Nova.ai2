@@ -158,7 +158,7 @@ function App() {
       .replace(/^(create|build|make|design)\s+/i, "")
       .replace(/[.!?].*$/, "")
       .trim()
-      .slice(0, 56) || "Nova AI Project";
+      .slice(0, 56) || "Anaya Wedding Hotel";
     const safeName = projectName.replace(/[&<>"']/g, (character) => ({
       "&": "&amp;",
       "<": "&lt;",

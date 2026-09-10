@@ -2,13 +2,15 @@ import React, { useEffect, useMemo, useState } from "react";
 import "./Library.css";
 import { buildProjectHtml } from "../utils/projectTemplate";
 
+const DEFAULT_PROJECT_NAME = "Anaya Wedding Hotel";
+
 function Library() {
   const [activeTab, setActiveTab] = useState("all");
   const [activeProject, setActiveProject] = useState(() => {
     try {
       const saved = localStorage.getItem("novaActiveProject");
       const project = saved ? JSON.parse(saved) : null;
-      if (project?.files?.["index.html"] && !project.files["index.html"].includes("hotel-shell-v2")) {
+      if (project?.files?.["index.html"] && !project.files["index.html"].includes("anaya-shell-v3")) {
         project.files["index.html"] = buildProjectHtml(project.name, project.files["index.html"]);
       }
       return project;
@@ -37,7 +39,7 @@ function Library() {
   });
 
   const [showModal, setShowModal] = useState(false);
-  const [projectName, setProjectName] = useState("");
+  const [projectName, setProjectName] = useState(DEFAULT_PROJECT_NAME);
   const [memory, setMemory] = useState("Default memory");
   const [search, setSearch] = useState("");
   const [projectToDelete, setProjectToDelete] = useState(null);
@@ -58,7 +60,7 @@ function Library() {
   // =====================================
 
   const openCreateModal = () => {
-    setProjectName("");
+    setProjectName(DEFAULT_PROJECT_NAME);
     setMemory("Default memory");
     setShowModal(true);
   };
@@ -69,7 +71,7 @@ function Library() {
 
   const closeCreateModal = () => {
     setShowModal(false);
-    setProjectName("");
+    setProjectName(DEFAULT_PROJECT_NAME);
   };
 
   // =====================================
@@ -164,7 +166,7 @@ function Library() {
       ...project,
       files: { "index.html": createStarterHtml(project.name), "README.md": `# ${project.name}\n\nA responsive project created with Nova AI.` }
     };
-    if (!hydratedProject.files["index.html"]?.includes("hotel-shell-v2")) {
+    if (!hydratedProject.files["index.html"]?.includes("anaya-shell-v3")) {
       hydratedProject.files["index.html"] = buildProjectHtml(hydratedProject.name, hydratedProject.files["index.html"]);
       setProjects((prev) => prev.map((item) => (
         item.id === hydratedProject.id ? hydratedProject : item
@@ -537,7 +539,7 @@ function Library() {
               <input
                 autoFocus
                 type="text"
-                placeholder="Copenhagen Trip"
+                placeholder="Anaya Wedding Hotel"
                 value={projectName}
                 onChange={(e) =>
                   setProjectName(

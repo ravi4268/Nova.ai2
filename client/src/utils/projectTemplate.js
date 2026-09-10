@@ -19,7 +19,7 @@ function getHeadContent(source) {
 }
 
 export function buildProjectHtml(name, pageHtml = "") {
-  const safeName = escapeHtml(name || "Nova AI Project");
+  const safeName = escapeHtml(name || "Anaya Wedding Hotel");
   const source = String(pageHtml || "").trim();
   const originalBody = getBodyContent(source) || `<section class="project-welcome"><span>Nova AI project</span><h1>${safeName}</h1><p>Your responsive project is ready. Ask Nova AI to shape the next screen.</p></section>`;
   const originalHead = getHeadContent(source);
@@ -40,21 +40,21 @@ ${originalHead}
 </style>
 </head>
 <body>
-<div class="nova-shell hotel-shell-v2">
+<div class="nova-shell anaya-shell-v3">
   <aside class="nova-sidebar" id="novaSidebar">
-    <div class="nova-brand"><span class="nova-brand-mark">H</span><div>hotel</div></div>
+    <div class="nova-brand"><span class="nova-brand-mark">A</span><div>${safeName}</div></div>
     <nav class="nova-nav" aria-label="Project navigation">
       <a class="active" href="#home">⌂ <span>Home</span></a>
       <a href="#about">◈ <span>About</span></a>
       <a href="#features">✦ <span>Features</span></a>
       <a href="#contact">✉ <span>Contact</span></a>
     </nav>
-    <div class="nova-sidebar-note">Built with AI<br><small>Responsive hotel website</small></div>
+    <div class="nova-sidebar-note">Built with AI<br><small>Responsive ${safeName} website</small></div>
   </aside>
   <div class="nova-overlay" id="novaOverlay"></div>
   <div class="nova-main">
-    <header class="nova-navbar"><button class="nova-menu" id="novaMenu" aria-label="Open navigation">☰</button><strong class="nova-navbar-title">hotel</strong><span class="nova-navbar-subtitle">Responsive hotel website</span></header>
-    <main class="nova-page"><div class="nova-page-content" id="home">${originalBody}</div><section class="nova-section" id="about"><h2>About hotel</h2><p>Welcome to hotel, a comfortable place designed for relaxing stays, thoughtful service, and memorable experiences.</p></section><section class="nova-section" id="features"><h2>Features</h2><div class="nova-feature-grid"><div class="nova-feature"><strong>Comfortable rooms</strong>Clean, calm spaces for every stay.</div><div class="nova-feature"><strong>Guest support</strong>Helpful service whenever you need it.</div><div class="nova-feature"><strong>Easy booking</strong>Simple, responsive experience on every device.</div></div></section><section class="nova-section" id="contact"><h2>Contact</h2><p>Email: stay@hotel.example<br />Phone: +1 (555) 014-2026<br />Address: 24 Grand Avenue, Downtown</p></section><section class="nova-ai" id="novaAi"><div class="nova-ai-head"><span class="nova-ai-icon">✦</span><h2>AI assistant</h2></div><p>Ask AI about this hotel website or describe the next improvement.</p><form class="nova-ai-form" id="novaAiForm"><input class="nova-ai-input" id="novaAiInput" placeholder="Improve this hotel website..." aria-label="Ask AI" /><button class="nova-ai-button" type="submit">Ask AI</button></form><div class="nova-ai-answer" id="novaAiAnswer"></div></section></main>
+    <header class="nova-navbar"><button class="nova-menu" id="novaMenu" aria-label="Open navigation">☰</button><strong class="nova-navbar-title">${safeName}</strong><span class="nova-navbar-subtitle">Responsive ${safeName} website</span></header>
+    <main class="nova-page"><div class="nova-page-content" id="home">${originalBody}</div><section class="nova-section" id="about"><h2>About ${safeName}</h2><p>Welcome to ${safeName}, a comfortable place designed for relaxing stays, thoughtful service, and memorable experiences.</p></section><section class="nova-section" id="features"><h2>Features</h2><div class="nova-feature-grid"><div class="nova-feature"><strong>Beautiful spaces</strong>Clean, calm spaces for every celebration.</div><div class="nova-feature"><strong>Guest support</strong>Helpful service whenever you need it.</div><div class="nova-feature"><strong>Easy booking</strong>Simple, responsive experience on every device.</div></div></section><section class="nova-section" id="contact"><h2>Contact</h2><p>Email: hello@anaya.example<br />Phone: +1 (555) 014-2026<br />Address: 24 Grand Avenue, Downtown</p></section><section class="nova-ai" id="novaAi"><div class="nova-ai-head"><span class="nova-ai-icon">✦</span><h2>AI assistant</h2></div><p>Ask AI about this ${safeName} website or describe the next improvement.</p><form class="nova-ai-form" id="novaAiForm"><input class="nova-ai-input" id="novaAiInput" placeholder="Improve this website..." aria-label="Ask AI" /><button class="nova-ai-button" type="submit">Ask AI</button></form><div class="nova-ai-answer" id="novaAiAnswer"></div></section></main>
   </div>
 </div>
 <script>
