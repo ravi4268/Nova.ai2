@@ -14,6 +14,7 @@ import "./styles.css";
 import Library from "./pages/Library";
 import Images from "./pages/Images";
 import Subscription from "./pages/Subscription";
+import { buildProjectHtml } from "./utils/projectTemplate";
 
 const API_URL =
   process.env.REACT_APP_API_URL ||
@@ -149,6 +150,62 @@ function App() {
   const navigateTo = (targetPage) => {
     setPage(targetPage);
     setSidebarOpen(false);
+  };
+
+  const createProjectFromChat = (prompt, reply) => {
+    const cleanPrompt = prompt.trim();
+    const projectName = cleanPrompt
+      .replace(/^(create|build|make|design)\s+/i, "")
+      .replace(/[.!?].*$/, "")
+      .trim()
+      .slice(0, 56) || "Nova AI Project";
+    const safeName = projectName.replace(/[&<>"']/g, (character) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[character]));
+    const safeReply = String(reply || "Your project is ready.").replace(/[&<>"']/g, (character) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[character]));
+    const aiHtml = buildProjectHtml(
+      projectName,
+      extractHtmlFromReply(reply) || `<section class="project-welcome"><span>Nova AI project</span><h1>${safeName}</h1><p>Responsive starter generated from your chat request.</p><div class="reply">${safeReply}</div></section>`
+    );
+    const project = {
+      id: Date.now(),
+      name: projectName,
+      type: "Created by you",
+      modified: "Just now",
+      memory: "Default memory",
+      aiReply: String(reply || "Your project is ready."),
+      files: {
+        "index.html": aiHtml || `<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeName}</title><style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;font-family:Inter,system-ui,sans-serif;color:#f7f8fc;background:#080b11}main{width:min(760px,100%);padding:clamp(28px,7vw,72px);border:1px solid #26354c;border-radius:28px;background:linear-gradient(145deg,#15233a,#0e1420);box-shadow:0 24px 80px #0008}span{color:#77b7ff;font-weight:700;letter-spacing:.08em;text-transform:uppercase}h1{margin:18px 0 14px;font-size:clamp(2rem,7vw,4.6rem);line-height:.96}p{margin:0;color:#afbdd2;font-size:clamp(1rem,2vw,1.2rem);line-height:1.6}.reply{margin-top:24px;padding:16px;border:1px solid #304766;border-radius:14px;color:#c9d8eb;white-space:pre-wrap}</style></head><body><main><span>Nova AI project</span><h1>${safeName}</h1><p>Responsive starter generated from your chat request.</p><div class="reply">${safeReply}</div></main></body></html>`,
+        "README.md": `# ${projectName}\n\nCreated from Nova AI chat.\n\nRequest: ${cleanPrompt}`,
+      },
+    };
+    let existingProjects = [];
+    try {
+      existingProjects = JSON.parse(localStorage.getItem("novaProjects") || "[]");
+      if (!Array.isArray(existingProjects)) existingProjects = [];
+    } catch {
+      existingProjects = [];
+    }
+    localStorage.setItem("novaProjects", JSON.stringify([project, ...existingProjects]));
+    localStorage.setItem("novaActiveProject", JSON.stringify(project));
+    navigateTo("library");
+  };
+
+  const extractHtmlFromReply = (reply) => {
+    const text = String(reply || "");
+    const fencedHtml = text.match(/```(?:html|htm)?\s*([\s\S]*?)```/i);
+    const candidate = fencedHtml ? fencedHtml[1].trim() : text.trim();
+    return /<!doctype\s+html|<html[\s>]/i.test(candidate) ? candidate : "";
   };
 
   // =========================================
@@ -502,6 +559,8 @@ function App() {
 
         return updated;
       });
+
+      createProjectFromChat(cleanMessage, data.reply);
     } catch (error) {
       console.error(
         "Nova AI Error:",

@@ -1,8 +1,31 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./Library.css";
+import { buildProjectHtml } from "../utils/projectTemplate";
 
 function Library() {
   const [activeTab, setActiveTab] = useState("all");
+  const [activeProject, setActiveProject] = useState(() => {
+    try {
+      const saved = localStorage.getItem("novaActiveProject");
+      const project = saved ? JSON.parse(saved) : null;
+      if (project?.files?.["index.html"] && !project.files["index.html"].includes("hotel-shell-v2")) {
+        project.files["index.html"] = buildProjectHtml(project.name, project.files["index.html"]);
+      }
+      return project;
+    } catch {
+      return null;
+    }
+  });
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiReply, setAiReply] = useState(() => {
+    try {
+      const saved = localStorage.getItem("novaActiveProject");
+      return saved ? JSON.parse(saved).aiReply || "" : "";
+    } catch {
+      return "";
+    }
+  });
+  const [aiLoading, setAiLoading] = useState(false);
 
   const [projects, setProjects] = useState(() => {
     try {
@@ -63,7 +86,11 @@ function Library() {
     name: name,
     type: "Created by you",
     modified: "Just now",
-    memory: memory
+    memory: memory,
+    files: {
+      "index.html": createStarterHtml(name),
+      "README.md": `# ${name}\n\nA responsive project created with Nova AI.`
+    }
   };
 
   setProjects((prev) => [
@@ -74,7 +101,12 @@ function Library() {
   setActiveTab("all");
   setShowModal(false);
   setProjectName("");
+  openProject(newProject);
 };
+
+  function createStarterHtml(name) {
+    return buildProjectHtml(name);
+  }
 
   // =====================================
   // ENTER KEY
@@ -128,7 +160,67 @@ function Library() {
   // =====================================
 
   const openProject = (project) => {
-    alert(`Opening project: ${project.name}`);
+    const hydratedProject = project.files ? { ...project, files: { ...project.files } } : {
+      ...project,
+      files: { "index.html": createStarterHtml(project.name), "README.md": `# ${project.name}\n\nA responsive project created with Nova AI.` }
+    };
+    if (!hydratedProject.files["index.html"]?.includes("hotel-shell-v2")) {
+      hydratedProject.files["index.html"] = buildProjectHtml(hydratedProject.name, hydratedProject.files["index.html"]);
+      setProjects((prev) => prev.map((item) => (
+        item.id === hydratedProject.id ? hydratedProject : item
+      )));
+    }
+    setActiveProject(hydratedProject);
+    setAiReply(hydratedProject.aiReply || "");
+    localStorage.setItem("novaActiveProject", JSON.stringify(hydratedProject));
+  };
+
+  const closeProject = () => {
+    setActiveProject(null);
+    localStorage.removeItem("novaActiveProject");
+    setAiReply("");
+    setAiPrompt("");
+  };
+
+  const previewProject = () => {
+    if (!activeProject?.files?.["index.html"]) return;
+    const previewUrl = URL.createObjectURL(new Blob([activeProject.files["index.html"]], { type: "text/html" }));
+    window.open(previewUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const downloadProject = () => {
+    if (!activeProject) return;
+    const content = activeProject.files?.["index.html"] || createStarterHtml(activeProject.name);
+    const downloadUrl = URL.createObjectURL(new Blob([content], { type: "text/html" }));
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = `${activeProject.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "nova-project"}.html`;
+    link.click();
+    URL.revokeObjectURL(downloadUrl);
+  };
+
+  const askProjectAi = async (event) => {
+    event.preventDefault();
+    const prompt = aiPrompt.trim();
+    if (!prompt || aiLoading || !activeProject) return;
+    setAiLoading(true);
+    setAiReply("");
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === "production" ? "" : "http://localhost:5001");
+      const response = await fetch(`${apiUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: `Project: ${activeProject.name}. Files: ${Object.keys(activeProject.files || {}).join(", ")}. User request: ${prompt}`, history: [] })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "AI request failed");
+      setAiReply(data.reply || "Nova AI has no suggestion yet.");
+    } catch (error) {
+      setAiReply("AI is offline right now. Your project is still ready to preview and download. Try again when the Nova server is running.");
+    } finally {
+      setAiLoading(false);
+      setAiPrompt("");
+    }
   };
 
   const deleteProject = () => {
@@ -139,6 +231,47 @@ function Library() {
     );
     setProjectToDelete(null);
   };
+
+  if (activeProject) {
+    return (
+      <div className="project-workspace">
+        <div className="workspace-topbar">
+          <button type="button" className="back-project" onClick={closeProject}>← Projects</button>
+          <div className="workspace-title"><span>📁</span><strong>{activeProject.name}</strong><small>Saved locally · {activeProject.memory}</small></div>
+          <div className="workspace-actions">
+            <button type="button" className="workspace-button" onClick={previewProject}>▶ Open preview</button>
+            <button type="button" className="workspace-button primary" onClick={downloadProject}>↓ Download</button>
+          </div>
+        </div>
+        <div className="workspace-grid">
+          <section className="workspace-editor">
+            <div className="workspace-section-heading"><span>Project files</span><small>{Object.keys(activeProject.files || {}).length} files</small></div>
+            <div className="file-list">
+              {Object.entries(activeProject.files || {}).map(([fileName, fileContent]) => (
+                <details className="file-item" key={fileName} open={fileName === "index.html"}>
+                  <summary>📄 {fileName}</summary>
+                  <pre>{fileContent}</pre>
+                </details>
+              ))}
+            </div>
+            <div className="preview-card">
+              <div><span className="status-dot" />Ready to run</div>
+              <p>Your responsive starter is live. Open the preview to test it in a new tab.</p>
+              <button type="button" className="preview-link" onClick={previewProject}>Run project ↗</button>
+            </div>
+          </section>
+          <aside className="project-ai-panel">
+            <div className="ai-panel-heading"><span className="ai-spark">✦</span><div><strong>Nova AI</strong><small>Build with your project</small></div></div>
+            <div className="ai-reply">{aiReply || "Tell me what to build next. I can plan a page, improve the design, or explain any file."}</div>
+            <form className="ai-form" onSubmit={askProjectAi}>
+              <textarea value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} placeholder="Ask AI to improve this project..." rows="4" />
+              <button type="submit" disabled={aiLoading || !aiPrompt.trim()}>{aiLoading ? "Thinking..." : "Ask Nova AI ✨"}</button>
+            </form>
+          </aside>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="library-page">
