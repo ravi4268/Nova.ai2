@@ -1,163 +1,163 @@
 import React, { useState } from "react";
-import {
-  FaCog,
-  FaBell,
-  FaMoon,
-  FaUser,
-  FaSave
-} from "react-icons/fa";
-
 import "./Settings.css";
 
-function Settings() {
-
+export default function Settings() {
+  const [darkMode, setDarkMode] = useState(true);
+  const [aiAssistant, setAiAssistant] = useState(true);
   const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  const [chatHistory, setChatHistory] = useState(true);
 
-  const handleSave = () => {
-    localStorage.setItem(
-      "settings",
-      JSON.stringify({
-        notifications,
-        darkMode
-      })
+  const SettingItem = ({
+    icon,
+    title,
+    description,
+    value,
+    setValue,
+  }) => {
+    return (
+      <div className="setting-card">
+        <div className="setting-left">
+          <div className="setting-icon">{icon}</div>
+
+          <div>
+            <h3>{title}</h3>
+            <p>{description}</p>
+          </div>
+        </div>
+
+        <button
+          className={`toggle ${value ? "active" : ""}`}
+          onClick={() => setValue(!value)}
+          aria-label={`Toggle ${title}`}
+        >
+          <span></span>
+        </button>
+      </div>
     );
-
-    alert("Settings Saved Successfully!");
   };
 
   return (
     <div className="settings-page">
 
+      {/* Header */}
       <div className="settings-header">
+        <div className="settings-logo">⚙️</div>
 
-        <h1>
-          <FaCog />
-          Settings
-        </h1>
-
-        <p>
-          Manage your account and application preferences
-        </p>
-
+        <div>
+          <h1>Settings</h1>
+          <p>Manage your Nova.AI preferences and experience.</p>
+        </div>
       </div>
 
-
-      <div className="settings-grid">
-
-        {/* Profile */}
-
-        <div className="settings-card">
-
-          <div className="settings-card-icon">
-            <FaUser />
+      {/* Appearance */}
+      <section className="settings-section">
+        <div className="section-title">
+          <span>🎨</span>
+          <div>
+            <h2>Appearance</h2>
+            <p>Customize how Nova.AI looks.</p>
           </div>
-
-          <div className="settings-card-content">
-
-            <h3>Profile</h3>
-
-            <p>
-              Manage your profile information
-            </p>
-
-            <input
-              type="text"
-              placeholder="Your Name"
-            />
-
-            <input
-              type="email"
-              placeholder="Email Address"
-            />
-
-          </div>
-
         </div>
 
+        <SettingItem
+          icon="🌙"
+          title="Dark Mode"
+          description="Use Nova.AI dark interface"
+          value={darkMode}
+          setValue={setDarkMode}
+        />
+      </section>
 
-        {/* Notifications */}
-
-        <div className="settings-card">
-
-          <div className="settings-card-icon">
-            <FaBell />
+      {/* AI */}
+      <section className="settings-section">
+        <div className="section-title">
+          <span>🤖</span>
+          <div>
+            <h2>AI Preferences</h2>
+            <p>Control your AI assistant experience.</p>
           </div>
-
-          <div className="settings-card-content">
-
-            <h3>Notifications</h3>
-
-            <p>
-              Enable or disable notifications
-            </p>
-
-            <label className="switch">
-
-              <input
-                type="checkbox"
-                checked={notifications}
-                onChange={(e) =>
-                  setNotifications(e.target.checked)
-                }
-              />
-
-              <span className="slider"></span>
-
-            </label>
-
-          </div>
-
         </div>
 
+        <SettingItem
+          icon="✨"
+          title="AI Assistant"
+          description="Enable intelligent AI responses"
+          value={aiAssistant}
+          setValue={setAiAssistant}
+        />
 
-        {/* Appearance */}
+        <SettingItem
+          icon="🔔"
+          title="Notifications"
+          description="Receive notifications from Nova.AI"
+          value={notifications}
+          setValue={setNotifications}
+        />
 
-        <div className="settings-card">
+        <SettingItem
+          icon="💬"
+          title="Chat History"
+          description="Save your conversations automatically"
+          value={chatHistory}
+          setValue={setChatHistory}
+        />
+      </section>
 
-          <div className="settings-card-icon">
-            <FaMoon />
+      {/* AI Response */}
+      <section className="settings-section">
+        <div className="section-title">
+          <span>⚡</span>
+          <div>
+            <h2>AI Response</h2>
+            <p>Configure your assistant behavior.</p>
           </div>
-
-          <div className="settings-card-content">
-
-            <h3>Appearance</h3>
-
-            <p>
-              Choose your application theme
-            </p>
-
-            <label className="switch">
-
-              <input
-                type="checkbox"
-                checked={darkMode}
-                onChange={(e) =>
-                  setDarkMode(e.target.checked)
-                }
-              />
-
-              <span className="slider"></span>
-
-            </label>
-
-          </div>
-
         </div>
 
+        <div className="response-box">
+          <div>
+            <h3>Response Style</h3>
+            <p>Choose how Nova.AI communicates with you.</p>
+          </div>
+
+          <select defaultValue="balanced">
+            <option value="balanced">Balanced</option>
+            <option value="creative">Creative</option>
+            <option value="precise">Precise</option>
+            <option value="short">Short & Simple</option>
+          </select>
+        </div>
+      </section>
+
+      {/* Account */}
+      <section className="settings-section">
+        <div className="section-title">
+          <span>👤</span>
+          <div>
+            <h2>Account</h2>
+            <p>Your Nova.AI account information.</p>
+          </div>
+        </div>
+
+        <div className="account-card">
+          <div className="avatar">N</div>
+
+          <div className="account-info">
+            <h3>User</h3>
+            <p>Free Plan</p>
+          </div>
+
+          <button className="manage-btn">
+            Manage Account
+          </button>
+        </div>
+      </section>
+
+      <div className="settings-footer">
+        <span>Nova.AI</span>
+        <span>•</span>
+        <span>Your preferences are saved automatically</span>
       </div>
-
-
-      <button
-        className="save-settings"
-        onClick={handleSave}
-      >
-        <FaSave />
-        Save Settings
-      </button>
 
     </div>
   );
 }
-
-export default Settings;

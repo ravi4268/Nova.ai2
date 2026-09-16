@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import "./Library.css";
 import { buildProjectHtml } from "../utils/projectTemplate";
 
-const DEFAULT_PROJECT_NAME = "Anaya Wedding Hotel";
+const DEFAULT_PROJECT_NAME = "NOVA.AI";
 
 function Library() {
   const [activeTab, setActiveTab] = useState("all");

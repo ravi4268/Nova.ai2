@@ -198,7 +198,6 @@ function App() {
     }
     localStorage.setItem("novaProjects", JSON.stringify([project, ...existingProjects]));
     localStorage.setItem("novaActiveProject", JSON.stringify(project));
-    navigateTo("library");
   };
 
   const extractHtmlFromReply = (reply) => {
@@ -207,6 +206,10 @@ function App() {
     const candidate = fencedHtml ? fencedHtml[1].trim() : text.trim();
     return /<!doctype\s+html|<html[\s>]/i.test(candidate) ? candidate : "";
   };
+
+  const isProjectRequest = (prompt) =>
+    /\b(website|web app|landing page|project|react app|react website)\b/i.test(prompt) &&
+    /\b(create|build|make|design|generate)\b/i.test(prompt);
 
   // =========================================
   // LOGIN
@@ -560,7 +563,9 @@ function App() {
         return updated;
       });
 
-      createProjectFromChat(cleanMessage, data.reply);
+      if (isProjectRequest(cleanMessage)) {
+        createProjectFromChat(cleanMessage, data.reply);
+      }
     } catch (error) {
       console.error(
         "Nova AI Error:",
