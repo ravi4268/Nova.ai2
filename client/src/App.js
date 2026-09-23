@@ -14,6 +14,7 @@ import "./styles.css";
 import Library from "./pages/Library";
 import Images from "./pages/Images";
 import Subscription from "./pages/Subscription";
+import SettingsPage from "./pages/SettingsPage";
 import { buildProjectHtml } from "./utils/projectTemplate";
 
 const API_URL =
@@ -29,26 +30,31 @@ function App() {
 
   const [isLoggedIn, setIsLoggedIn] =
     useState(
-      localStorage.getItem("isLoggedIn") ===
-        "true"
+      localStorage.getItem("isLoggedIn") === "true"
     );
 
   // =========================================
   // NAVIGATION
   // =========================================
 
-  const [page, setPage] =
-    useState("chat");
+  const [page, setPage] = useState("chat");
 
   const [sidebarOpen, setSidebarOpen] =
     useState(false);
 
   const [currentPlan, setCurrentPlan] =
-    useState(() => localStorage.getItem("novaPlan") || "Free");
+    useState(
+      () =>
+        localStorage.getItem("novaPlan") ||
+        "Free"
+    );
 
   const activatePlan = (planName) => {
     setCurrentPlan(planName);
-    localStorage.setItem("novaPlan", planName);
+    localStorage.setItem(
+      "novaPlan",
+      planName
+    );
   };
 
   // =========================================
@@ -152,64 +158,157 @@ function App() {
     setSidebarOpen(false);
   };
 
-  const createProjectFromChat = (prompt, reply) => {
+  // =========================================
+  // PROJECT CREATION
+  // =========================================
+
+  const createProjectFromChat = (
+    prompt,
+    reply
+  ) => {
     const cleanPrompt = prompt.trim();
-    const projectName = cleanPrompt
-      .replace(/^(create|build|make|design)\s+/i, "")
-      .replace(/[.!?].*$/, "")
-      .trim()
-      .slice(0, 56) || "Anaya Wedding Hotel";
-    const safeName = projectName.replace(/[&<>"']/g, (character) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    }[character]));
-    const safeReply = String(reply || "Your project is ready.").replace(/[&<>"']/g, (character) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    }[character]));
+
+    const projectName =
+      cleanPrompt
+        .replace(
+          /^(create|build|make|design)\s+/i,
+          ""
+        )
+        .replace(/[.!?].*$/, "")
+        .trim()
+        .slice(0, 56) ||
+      "Anaya Wedding Hotel";
+
+    const safeName =
+      projectName.replace(
+        /[&<>"']/g,
+        (character) =>
+          ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          }[character])
+      );
+
+    const safeReply = String(
+      reply ||
+        "Your project is ready."
+    ).replace(
+      /[&<>"']/g,
+      (character) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        }[character])
+    );
+
     const aiHtml = buildProjectHtml(
       projectName,
-      extractHtmlFromReply(reply) || `<section class="project-welcome"><span>Nova AI project</span><h1>${safeName}</h1><p>Responsive starter generated from your chat request.</p><div class="reply">${safeReply}</div></section>`
+      extractHtmlFromReply(reply) ||
+        `<section class="project-welcome">
+          <span>Nova AI project</span>
+          <h1>${safeName}</h1>
+          <p>
+            Responsive starter generated
+            from your chat request.
+          </p>
+          <div class="reply">
+            ${safeReply}
+          </div>
+        </section>`
     );
+
     const project = {
       id: Date.now(),
       name: projectName,
       type: "Created by you",
       modified: "Just now",
       memory: "Default memory",
-      aiReply: String(reply || "Your project is ready."),
+      aiReply: String(
+        reply ||
+          "Your project is ready."
+      ),
       files: {
-        "index.html": aiHtml || `<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeName}</title><style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;font-family:Inter,system-ui,sans-serif;color:#f7f8fc;background:#080b11}main{width:min(760px,100%);padding:clamp(28px,7vw,72px);border:1px solid #26354c;border-radius:28px;background:linear-gradient(145deg,#15233a,#0e1420);box-shadow:0 24px 80px #0008}span{color:#77b7ff;font-weight:700;letter-spacing:.08em;text-transform:uppercase}h1{margin:18px 0 14px;font-size:clamp(2rem,7vw,4.6rem);line-height:.96}p{margin:0;color:#afbdd2;font-size:clamp(1rem,2vw,1.2rem);line-height:1.6}.reply{margin-top:24px;padding:16px;border:1px solid #304766;border-radius:14px;color:#c9d8eb;white-space:pre-wrap}</style></head><body><main><span>Nova AI project</span><h1>${safeName}</h1><p>Responsive starter generated from your chat request.</p><div class="reply">${safeReply}</div></main></body></html>`,
-        "README.md": `# ${projectName}\n\nCreated from Nova AI chat.\n\nRequest: ${cleanPrompt}`,
+        "index.html": aiHtml,
+
+        "README.md":
+          `# ${projectName}\n\n` +
+          `Created from Nova AI chat.\n\n` +
+          `Request: ${cleanPrompt}`,
       },
     };
+
     let existingProjects = [];
+
     try {
-      existingProjects = JSON.parse(localStorage.getItem("novaProjects") || "[]");
-      if (!Array.isArray(existingProjects)) existingProjects = [];
+      existingProjects =
+        JSON.parse(
+          localStorage.getItem(
+            "novaProjects"
+          ) || "[]"
+        );
+
+      if (
+        !Array.isArray(
+          existingProjects
+        )
+      ) {
+        existingProjects = [];
+      }
     } catch {
       existingProjects = [];
     }
-    localStorage.setItem("novaProjects", JSON.stringify([project, ...existingProjects]));
-    localStorage.setItem("novaActiveProject", JSON.stringify(project));
+
+    localStorage.setItem(
+      "novaProjects",
+      JSON.stringify([
+        project,
+        ...existingProjects,
+      ])
+    );
+
+    localStorage.setItem(
+      "novaActiveProject",
+      JSON.stringify(project)
+    );
   };
 
-  const extractHtmlFromReply = (reply) => {
-    const text = String(reply || "");
-    const fencedHtml = text.match(/```(?:html|htm)?\s*([\s\S]*?)```/i);
-    const candidate = fencedHtml ? fencedHtml[1].trim() : text.trim();
-    return /<!doctype\s+html|<html[\s>]/i.test(candidate) ? candidate : "";
+  const extractHtmlFromReply = (
+    reply
+  ) => {
+    const text = String(
+      reply || ""
+    );
+
+    const fencedHtml = text.match(
+      /```(?:html|htm)?\s*([\s\S]*?)```/i
+    );
+
+    const candidate = fencedHtml
+      ? fencedHtml[1].trim()
+      : text.trim();
+
+    return /<!doctype\s+html|<html[\s>]/i.test(
+      candidate
+    )
+      ? candidate
+      : "";
   };
 
-  const isProjectRequest = (prompt) =>
-    /\b(website|web app|landing page|project|react app|react website)\b/i.test(prompt) &&
-    /\b(create|build|make|design|generate)\b/i.test(prompt);
+  const isProjectRequest = (
+    prompt
+  ) =>
+    /\b(website|web app|landing page|project|react app|react website)\b/i.test(
+      prompt
+    ) &&
+    /\b(create|build|make|design|generate)\b/i.test(
+      prompt
+    );
 
   // =========================================
   // LOGIN
@@ -260,11 +359,13 @@ function App() {
     );
 
     if (imageInputRef.current) {
-      imageInputRef.current.value = "";
+      imageInputRef.current.value =
+        "";
     }
 
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value =
+        "";
     }
 
     setPage("chat");
@@ -282,7 +383,9 @@ function App() {
     if (!file) return;
 
     if (
-      !file.type.startsWith("image/")
+      !file.type.startsWith(
+        "image/"
+      )
     ) {
       alert(
         "Please select an image file."
@@ -360,16 +463,8 @@ function App() {
     const fileToSend =
       selectedFile;
 
-    // =======================================
-    // KEEP OLD HISTORY BEFORE ADDING MESSAGE
-    // =======================================
-
     const oldMessages =
       [...messages];
-
-    // =======================================
-    // TEMP USER MESSAGE
-    // =======================================
 
     const tempMessage = {
       id: Date.now(),
@@ -407,10 +502,6 @@ function App() {
       tempMessage,
     ]);
 
-    // =======================================
-    // CLEAR INPUT
-    // =======================================
-
     setMessage("");
 
     setSelectedImage(null);
@@ -430,33 +521,30 @@ function App() {
     setSending(true);
     setBackendError("");
 
-    // =======================================
-    // BUILD HISTORY FOR AI
-    // =======================================
-
     const history = [];
 
     oldMessages.forEach((item) => {
       if (item.user?.trim()) {
         history.push({
           role: "user",
-          content: item.user.trim(),
+          content:
+            item.user.trim(),
         });
       }
 
-      if (item.ai?.trim() && item.ai !== "Thinking...") {
+      if (
+        item.ai?.trim() &&
+        item.ai !== "Thinking..."
+      ) {
         history.push({
           role: "assistant",
-          content: item.ai.trim(),
+          content:
+            item.ai.trim(),
         });
       }
     });
 
     try {
-      // =====================================
-      // FORM DATA
-      // =====================================
-
       const formData =
         new FormData();
 
@@ -465,18 +553,10 @@ function App() {
         cleanMessage
       );
 
-      // IMPORTANT:
-      // Previous conversation
-      // is sent to backend.
-
       formData.append(
         "history",
         JSON.stringify(history)
       );
-
-      // =====================================
-      // IMAGE
-      // =====================================
 
       if (imageToSend) {
         formData.append(
@@ -485,10 +565,6 @@ function App() {
         );
       }
 
-      // =====================================
-      // FILE
-      // =====================================
-
       if (fileToSend) {
         formData.append(
           "file",
@@ -496,23 +572,14 @@ function App() {
         );
       }
 
-      // =====================================
-      // API REQUEST
-      // =====================================
-
       const response =
         await fetch(
           `${API_URL}/api/chat`,
           {
             method: "POST",
-
             body: formData,
           }
         );
-
-      // =====================================
-      // READ RESPONSE
-      // =====================================
 
       const data =
         await response.json();
@@ -524,10 +591,6 @@ function App() {
             `Server error: ${response.status}`
         );
       }
-
-      // =====================================
-      // UPDATE LAST MESSAGE
-      // =====================================
 
       setMessages((prev) => {
         const updated =
@@ -563,8 +626,15 @@ function App() {
         return updated;
       });
 
-      if (isProjectRequest(cleanMessage)) {
-        createProjectFromChat(cleanMessage, data.reply);
+      if (
+        isProjectRequest(
+          cleanMessage
+        )
+      ) {
+        createProjectFromChat(
+          cleanMessage,
+          data.reply
+        );
       }
     } catch (error) {
       console.error(
@@ -575,10 +645,6 @@ function App() {
       setBackendError(
         "AI connection failed. Make sure backend is running on port 5001."
       );
-
-      // =====================================
-      // SHOW ERROR IN CHAT
-      // =====================================
 
       setMessages((prev) => {
         const updated =
@@ -619,12 +685,14 @@ function App() {
       !e.shiftKey
     ) {
       e.preventDefault();
-
       sendMessage();
     }
   };
 
-  // Use the browser's speech recognition so spoken words fill the same input.
+  // =========================================
+  // VOICE
+  // =========================================
+
   const toggleVoiceInput = () => {
     if (!speechSupported) return;
 
@@ -637,7 +705,9 @@ function App() {
       window.SpeechRecognition ||
       window.webkitSpeechRecognition;
 
-    const recognition = new SpeechRecognition();
+    const recognition =
+      new SpeechRecognition();
+
     recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = "en-US";
@@ -646,10 +716,18 @@ function App() {
       setIsListening(true);
     };
 
-    recognition.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .map((result) => result[0].transcript)
-        .join("");
+    recognition.onresult = (
+      event
+    ) => {
+      const transcript =
+        Array.from(
+          event.results
+        )
+          .map(
+            (result) =>
+              result[0].transcript
+          )
+          .join("");
 
       setMessage(transcript);
     };
@@ -663,7 +741,9 @@ function App() {
       textareaRef.current?.focus();
     };
 
-    recognitionRef.current = recognition;
+    recognitionRef.current =
+      recognition;
+
     recognition.start();
   };
 
@@ -686,11 +766,9 @@ function App() {
   if (!isLoggedIn) {
     return (
       <div className="login-screen">
-
         <div className="login-card">
 
           <div className="login-logo">
-
             <div className="logo-box">
               N
             </div>
@@ -704,7 +782,6 @@ function App() {
                 Intelligent Assistant
               </p>
             </div>
-
           </div>
 
           <h2>
@@ -752,7 +829,6 @@ function App() {
           </p>
 
         </div>
-
       </div>
     );
   }
@@ -764,10 +840,6 @@ function App() {
   return (
     <div className="website">
 
-      {/* =====================================
-          MOBILE OVERLAY
-      ===================================== */}
-
       {sidebarOpen && (
         <div
           className="overlay"
@@ -777,9 +849,7 @@ function App() {
         />
       )}
 
-      {/* =====================================
-          SIDEBAR
-      ===================================== */}
+      {/* SIDEBAR */}
 
       <aside
         className={`sidebar ${
@@ -788,8 +858,6 @@ function App() {
             : ""
         }`}
       >
-
-        {/* BRAND */}
 
         <div className="brand">
 
@@ -803,8 +871,6 @@ function App() {
 
         </div>
 
-        {/* NEW CHAT */}
-
         <button
           type="button"
           className="new-chat"
@@ -812,8 +878,6 @@ function App() {
         >
           ＋ New Chat
         </button>
-
-        {/* NAVIGATION */}
 
         <div className="navigation">
 
@@ -829,9 +893,7 @@ function App() {
             }
           >
             💬
-            <span>
-              Chat
-            </span>
+            <span>Chat</span>
           </button>
 
           <button
@@ -846,9 +908,7 @@ function App() {
             }
           >
             🕘
-            <span>
-              History
-            </span>
+            <span>History</span>
           </button>
 
           <button
@@ -863,9 +923,7 @@ function App() {
             }
           >
             🖼️
-            <span>
-              Images
-            </span>
+            <span>Images</span>
           </button>
 
           <button
@@ -880,9 +938,7 @@ function App() {
             }
           >
             📚
-            <span>
-              Library
-            </span>
+            <span>Library</span>
           </button>
 
           <button
@@ -905,6 +961,8 @@ function App() {
             </span>
           </button>
 
+          {/* SETTINGS */}
+
           <button
             type="button"
             className={
@@ -917,14 +975,10 @@ function App() {
             }
           >
             ⚙️
-            <span>
-              Settings
-            </span>
+            <span>Settings</span>
           </button>
 
         </div>
-
-        {/* SIDEBAR BOTTOM */}
 
         <div className="sidebar-bottom">
 
@@ -958,13 +1012,9 @@ function App() {
 
       </aside>
 
-      {/* =====================================
-          MAIN
-      ===================================== */}
+      {/* MAIN */}
 
       <div className="main">
-
-        {/* TOPBAR */}
 
         <header className="topbar">
 
@@ -1002,28 +1052,20 @@ function App() {
 
         </header>
 
-        {/* BACKEND ERROR */}
-
         {backendError && (
           <div className="backend-error">
             ❌ {backendError}
           </div>
         )}
 
-        {/* ===================================
-            CONTENT
-        =================================== */}
-
         <main className="content">
 
-          {/* =================================
+          {/* ================================
               CHAT
           ================================= */}
 
           {page === "chat" && (
             <div className="chat">
-
-              {/* CHAT HEADER */}
 
               <div className="chat-title">
 
@@ -1032,7 +1074,6 @@ function App() {
                 </div>
 
                 <div>
-
                   <h2>
                     How can I help you?
                   </h2>
@@ -1040,14 +1081,9 @@ function App() {
                   <p>
                     Ask Nova AI anything
                   </p>
-
                 </div>
 
               </div>
-
-              {/* =================================
-                  WELCOME
-              ================================= */}
 
               {messages.length === 0 ? (
                 <div className="welcome">
@@ -1104,12 +1140,7 @@ function App() {
                   </div>
 
                 </div>
-
               ) : (
-
-                /* =================================
-                   MESSAGES
-                ================================= */
 
                 <div className="messages">
 
@@ -1245,13 +1276,9 @@ function App() {
                 </div>
               )}
 
-              {/* =================================
-                  INPUT AREA
-              ================================= */}
+              {/* INPUT */}
 
               <div className="input-area">
-
-                {/* ATTACHMENT PREVIEW */}
 
                 {(selectedImage ||
                   selectedFile) && (
@@ -1266,7 +1293,6 @@ function App() {
                         />
 
                         <div>
-
                           <strong>
                             {
                               selectedImage.name
@@ -1276,7 +1302,6 @@ function App() {
                           <small>
                             Image ready
                           </small>
-
                         </div>
 
                         <button
@@ -1299,7 +1324,6 @@ function App() {
                         </span>
 
                         <div>
-
                           <strong>
                             {
                               selectedFile.name
@@ -1309,7 +1333,6 @@ function App() {
                           <small>
                             File ready
                           </small>
-
                         </div>
 
                         <button
@@ -1327,11 +1350,7 @@ function App() {
                   </div>
                 )}
 
-                {/* INPUT BOX */}
-
                 <div className="input-box">
-
-                  {/* IMAGE */}
 
                   <button
                     type="button"
@@ -1353,8 +1372,6 @@ function App() {
                     }
                   />
 
-                  {/* FILE */}
-
                   <button
                     type="button"
                     className="attach-button"
@@ -1374,30 +1391,31 @@ function App() {
                     }
                   />
 
-                  {/* VOICE INPUT */}
-
                   <button
                     type="button"
                     className={`mic-button${
-                      isListening ? " listening" : ""
+                      isListening
+                        ? " listening"
+                        : ""
                     }`}
-                    onClick={toggleVoiceInput}
-                    disabled={!speechSupported}
+                    onClick={
+                      toggleVoiceInput
+                    }
+                    disabled={
+                      !speechSupported
+                    }
                     aria-label={
                       isListening
                         ? "Stop voice input"
                         : "Start voice input"
                     }
-                    title={
-                      speechSupported
-                        ? "Speak to type"
-                        : "Voice input is not supported in this browser"
-                    }
                   >
-                    {isListening ? <FiMicOff /> : <FiMic />}
+                    {isListening ? (
+                      <FiMicOff />
+                    ) : (
+                      <FiMic />
+                    )}
                   </button>
-
-                  {/* TEXTAREA */}
 
                   <textarea
                     ref={textareaRef}
@@ -1413,8 +1431,6 @@ function App() {
                     }
                     rows="1"
                   />
-
-                  {/* SEND */}
 
                   <button
                     type="button"
@@ -1451,7 +1467,7 @@ function App() {
             </div>
           )}
 
-          {/* =================================
+          {/* ================================
               HISTORY
           ================================= */}
 
@@ -1470,8 +1486,7 @@ function App() {
                 Your previous conversations.
               </p>
 
-              {messages.length ===
-              0 ? (
+              {messages.length === 0 ? (
                 <div className="empty">
                   No chat history yet.
                 </div>
@@ -1484,7 +1499,6 @@ function App() {
                         className="history-card"
                         key={item.id}
                       >
-
                         <strong>
                           {item.user ||
                             "Image/File message"}
@@ -1493,7 +1507,6 @@ function App() {
                         <p>
                           {item.ai}
                         </p>
-
                       </div>
                     )
                   )}
@@ -1504,7 +1517,7 @@ function App() {
             </div>
           )}
 
-          {/* =================================
+          {/* ================================
               IMAGES
           ================================= */}
 
@@ -1512,7 +1525,7 @@ function App() {
             <Images />
           )}
 
-          {/* =================================
+          {/* ================================
               LIBRARY
           ================================= */}
 
@@ -1520,79 +1533,25 @@ function App() {
             <Library />
           )}
 
-          {/* =================================
+          {/* ================================
               SUBSCRIPTION
           ================================= */}
 
-          {page ===
-            "subscription" && (
+          {page === "subscription" && (
             <Subscription
               currentPlan={currentPlan}
-              onPlanActivated={activatePlan}
+              onPlanActivated={
+                activatePlan
+              }
             />
           )}
 
-          {/* =================================
+          {/* ================================
               SETTINGS
           ================================= */}
 
           {page === "settings" && (
-            <div className="page">
-
-              <div className="page-icon">
-                ⚙️
-              </div>
-
-              <h1>
-                Settings
-              </h1>
-
-              <p>
-                Manage your Nova.AI
-                preferences.
-              </p>
-
-              <div className="setting">
-
-                <div>
-
-                  <strong>
-                    Dark Mode
-                  </strong>
-
-                  <small>
-                    Nova AI dark interface
-                  </small>
-
-                </div>
-
-                <span>
-                  ON
-                </span>
-
-              </div>
-
-              <div className="setting">
-
-                <div>
-
-                  <strong>
-                    AI Assistant
-                  </strong>
-
-                  <small>
-                    Enable AI responses
-                  </small>
-
-                </div>
-
-                <span>
-                  ON
-                </span>
-
-              </div>
-
-            </div>
+            <SettingsPage />
           )}
 
         </main>

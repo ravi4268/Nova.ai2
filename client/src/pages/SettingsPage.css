@@ -1,0 +1,176 @@
+* {
+  box-sizing: border-box;
+}
+
+.settings-page {
+  width: 100%;
+  min-height: 100vh;
+  padding: 40px 50px;
+  background: #080b10;
+  color: white;
+}
+
+.settings-header {
+  margin-bottom: 22px;
+}
+
+.settings-icon {
+  font-size: 46px;
+  margin-bottom: 28px;
+}
+
+.settings-header h1 {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 700;
+}
+
+.settings-header p {
+  margin-top: 20px;
+  color: #8ca4c8;
+  font-size: 21px;
+}
+
+.settings-list {
+  width: 100%;
+  max-width: 1125px;
+}
+
+.settings-card {
+  width: 100%;
+  min-height: 100px;
+  padding: 20px 23px;
+  margin-bottom: 19px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background: #080b10;
+  border: 1px solid #293445;
+  border-radius: 16px;
+
+  transition: 0.25s;
+}
+
+.settings-card:hover {
+  border-color: #46566d;
+  background: #0c1017;
+}
+
+.settings-content h3 {
+  margin: 0 0 5px;
+  font-size: 21px;
+}
+
+.settings-content span {
+  color: #86a0c5;
+  font-size: 17px;
+}
+
+.settings-action {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.status-on {
+  color: #20f77b;
+  font-size: 20px;
+}
+
+.status-off {
+  color: #ff5c70;
+  font-size: 20px;
+}
+
+/* Toggle */
+
+.toggle {
+  position: relative;
+  width: 54px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 50px;
+  background: #303846;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.toggle.active {
+  background: #18d76b;
+}
+
+.toggle-circle {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  top: 4px;
+  left: 4px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.toggle.active .toggle-circle {
+  transform: translateX(24px);
+}
+
+/* Mobile */
+
+@media (max-width: 600px) {
+
+  .settings-page {
+    padding: 25px 16px;
+  }
+
+  .settings-icon {
+    font-size: 38px;
+    margin-bottom: 20px;
+  }
+
+  .settings-header h1 {
+    font-size: 32px;
+  }
+
+  .settings-header p {
+    font-size: 16px;
+    margin-top: 12px;
+  }
+
+  .settings-card {
+    padding: 17px 14px;
+  }
+
+  .settings-content h3 {
+    font-size: 17px;
+  }
+
+  .settings-content span {
+    font-size: 14px;
+  }
+
+  .settings-action {
+    gap: 8px;
+  }
+
+  .status-on,
+  .status-off {
+    font-size: 15px;
+  }
+
+  .toggle {
+    width: 46px;
+    height: 26px;
+  }
+
+  .toggle-circle {
+    width: 18px;
+    height: 18px;
+  }
+
+  .toggle.active .toggle-circle {
+    transform: translateX(20px);
+  }
+}
