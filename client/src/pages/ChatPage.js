@@ -13,63 +13,71 @@ const API_URL =
     : "http://localhost:5001");
 
 function ChatPage() {
-  const [messages, setMessages] =
-    useState([]);
+  // =====================================================
+  // STATES
+  // =====================================================
 
-  const [input, setInput] =
-    useState("");
+  const [messages, setMessages] = useState([]);
 
-  const [loading, setLoading] =
-    useState(false);
+  const [input, setInput] = useState("");
 
-  const [image, setImage] =
-    useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const [file, setFile] =
-    useState(null);
+  const [image, setImage] = useState(null);
 
-  const messagesEndRef =
-    useRef(null);
+  const [file, setFile] = useState(null);
 
-  const inputRef =
-    useRef(null);
+  const [backendError, setBackendError] = useState("");
 
-  const imageInputRef =
-    useRef(null);
+  // AI Assistant ON / OFF
+  const [aiAssistant, setAiAssistant] = useState(() => {
+    return (
+      localStorage.getItem("novaAIAssistant") !== "false"
+    );
+  });
 
-  const fileInputRef =
-    useRef(null);
+  // =====================================================
+  // REFS
+  // =====================================================
 
-  // ==================================================
-  // LOAD
-  // ==================================================
+  const messagesEndRef = useRef(null);
+
+  const inputRef = useRef(null);
+
+  const imageInputRef = useRef(null);
+
+  const fileInputRef = useRef(null);
+
+  // =====================================================
+  // LOAD CHAT
+  // =====================================================
 
   useEffect(() => {
     try {
-      const saved =
-        localStorage.getItem(
-          "novaMessages"
-        );
+      const saved = localStorage.getItem(
+        "novaMessages"
+      );
 
-      if (saved) {
-        const parsed =
-          JSON.parse(saved);
+      if (!saved) {
+        return;
+      }
 
-        if (Array.isArray(parsed)) {
-          setMessages(parsed);
-        }
+      const parsed = JSON.parse(saved);
+
+      if (Array.isArray(parsed)) {
+        setMessages(parsed);
       }
     } catch (error) {
       console.error(
-        "Load error:",
+        "Nova chat load error:",
         error
       );
     }
   }, []);
 
-  // ==================================================
-  // SAVE
-  // ==================================================
+  // =====================================================
+  // SAVE CHAT
+  // =====================================================
 
   useEffect(() => {
     try {
@@ -79,15 +87,60 @@ function ChatPage() {
       );
     } catch (error) {
       console.error(
-        "Save error:",
+        "Nova chat save error:",
         error
       );
     }
   }, [messages]);
 
-  // ==================================================
+  // =====================================================
+  // LISTEN TO SETTINGS
+  // =====================================================
+
+  useEffect(() => {
+    const handleAISetting = (event) => {
+      const enabled =
+        event.detail?.enabled;
+
+      if (typeof enabled !== "boolean") {
+        return;
+      }
+
+      setAiAssistant(enabled);
+
+      // AI OFF
+      if (!enabled) {
+        setInput("");
+        setImage(null);
+        setFile(null);
+        setBackendError("");
+
+        if (imageInputRef.current) {
+          imageInputRef.current.value = "";
+        }
+
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
+    };
+
+    window.addEventListener(
+      "nova-ai-setting",
+      handleAISetting
+    );
+
+    return () => {
+      window.removeEventListener(
+        "nova-ai-setting",
+        handleAISetting
+      );
+    };
+  }, []);
+
+  // =====================================================
   // SCROLL
-  // ==================================================
+  // =====================================================
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
@@ -95,199 +148,474 @@ function ChatPage() {
     });
   }, [messages, loading]);
 
-  // ==================================================
-  // SEND
-  // ==================================================
+  // =====================================================
+  // FRESH AI STATUS
+  // =====================================================
 
- const sendMessage = async () => {
-  if (!message.trim() || sending) return;
-
-  const userMessage = message.trim();
-
-  setSending(true);
-  setBackendError("");
-
-  const newMessage = {
-    id: Date.now(),
-    user: userMessage,
-    ai: "Thinking...",
+  const isAIEnabled = () => {
+    return (
+      localStorage.getItem(
+        "novaAIAssistant"
+      ) !== "false"
+    );
   };
 
-  setMessages((prev) => [...prev, newMessage]);
-  setMessage("");
+  // =====================================================
+  // SEND MESSAGE
+  // =====================================================
 
-  try {
-    const formData = new FormData();
+  const sendMessage = async () => {
+    // -----------------------------------------------
+    // HARD CHECK
+    // -----------------------------------------------
 
-    formData.append("message", userMessage);
+    const aiEnabled = isAIEnabled();
 
-    formData.append(
-      "history",
-      JSON.stringify(
-        messages.map((item) => ({
-          user: item.user || "",
-          ai: item.ai || "",
-        }))
-      )
-    );
+    if (!aiEnabled) {
+      setAiAssistant(false);
 
-    const response = await fetch(`${API_URL}/api/chat`, {
-      method: "POST",
-      body: formData,
-    });
+      window.alert(
+        "AI Assistant is OFF.\n\nPlease go to Settings and turn AI Assistant ON."
+      );
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Backend error");
+      return;
     }
 
-    if (!data.success) {
-      throw new Error(data.error || "AI response failed");
+    // -----------------------------------------------
+    // EMPTY CHECK
+    // -----------------------------------------------
+
+    if (
+      !input.trim() &&
+      !image &&
+      !file
+    ) {
+      return;
     }
 
-    setMessages((prev) =>
-      prev.map((item) =>
-        item.id === newMessage.id
-          ? {
-              ...item,
-              ai: data.reply,
-            }
-          : item
-      )
-    );
-  } catch (error) {
-    console.error("CHAT ERROR:", error);
+    // -----------------------------------------------
+    // LOADING CHECK
+    // -----------------------------------------------
 
-    setBackendError(error.message);
+    if (loading) {
+      return;
+    }
 
-    setMessages((prev) =>
-      prev.map((item) =>
-        item.id === newMessage.id
-          ? {
-              ...item,
-              ai: "⚠️ " + error.message,
-            }
-          : item
-      )
-    );
-  } finally {
-    setSending(false);
-  }
-};
+    setLoading(true);
+    setBackendError("");
 
-  // ==================================================
-  // ENTER
-  // ==================================================
+    // -----------------------------------------------
+    // USER TEXT
+    // -----------------------------------------------
 
-  const handleKeyDown =
-    (e) => {
+    const userText =
+      input.trim() ||
+      (image
+        ? "Please analyze this image."
+        : file
+        ? `Please analyze this file: ${file.name}`
+        : "");
+
+    const userId = Date.now();
+
+    const aiId = userId + 1;
+
+    // -----------------------------------------------
+    // USER MESSAGE
+    // -----------------------------------------------
+
+    const userMessage = {
+      id: userId,
+
+      role: "user",
+
+      content: userText,
+
+      image: image
+        ? URL.createObjectURL(image)
+        : null,
+
+      file: file
+        ? file.name
+        : null,
+    };
+
+    // -----------------------------------------------
+    // THINKING MESSAGE
+    // -----------------------------------------------
+
+    const thinkingMessage = {
+      id: aiId,
+
+      role: "assistant",
+
+      content: "Thinking...",
+    };
+
+    setMessages((prev) => [
+      ...prev,
+      userMessage,
+      thinkingMessage,
+    ]);
+
+    setInput("");
+
+    try {
+      // ---------------------------------------------
+      // SECOND HARD CHECK
+      // ---------------------------------------------
 
       if (
-        e.key === "Enter" &&
-        !e.shiftKey
+        localStorage.getItem(
+          "novaAIAssistant"
+        ) === "false"
       ) {
+        setMessages((prev) =>
+          prev.filter(
+            (item) =>
+              item.id !== userId &&
+              item.id !== aiId
+          )
+        );
 
-        e.preventDefault();
+        setLoading(false);
 
-        sendMessage();
-      }
-    };
-
-  // ==================================================
-  // SUGGESTIONS
-  // ==================================================
-
-  const useSuggestion =
-    (text) => {
-
-      setInput(text);
-
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
-    };
-
-  // ==================================================
-  // IMAGE
-  // ==================================================
-
-  const handleImage =
-    (e) => {
-
-      const selected =
-        e.target.files?.[0];
-
-      if (!selected) {
         return;
       }
 
-      setImage(selected);
-    };
+      // ---------------------------------------------
+      // FORM DATA
+      // ---------------------------------------------
 
-  // ==================================================
-  // FILE
-  // ==================================================
+      const formData = new FormData();
 
-  const handleFile =
-    (e) => {
+      formData.append(
+        "message",
+        userText
+      );
 
-      const selected =
-        e.target.files?.[0];
+      // History
+      formData.append(
+        "history",
+        JSON.stringify(
+          messages.map((item) => ({
+            role: item.role,
+            content: item.content,
+          }))
+        )
+      );
 
-      if (!selected) {
+      // Image
+      if (image) {
+        formData.append(
+          "image",
+          image
+        );
+      }
+
+      // File
+      if (file) {
+        formData.append(
+          "file",
+          file
+        );
+      }
+
+      // ---------------------------------------------
+      // FINAL CHECK BEFORE API
+      // ---------------------------------------------
+
+      if (
+        localStorage.getItem(
+          "novaAIAssistant"
+        ) === "false"
+      ) {
+        setLoading(false);
         return;
       }
 
-      setFile(selected);
-    };
+      // ---------------------------------------------
+      // BACKEND API
+      // ---------------------------------------------
 
-  // ==================================================
-  // CLEAR
-  // ==================================================
+      const response = await fetch(
+        `${API_URL}/api/chat`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
-  const clearChat =
-    () => {
+      let data;
 
-      setMessages([]);
-      setInput("");
+      try {
+        data = await response.json();
+      } catch (error) {
+        throw new Error(
+          "Backend returned an invalid response."
+        );
+      }
+
+      // ---------------------------------------------
+      // HTTP ERROR
+      // ---------------------------------------------
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+          `Backend error: ${response.status}`
+        );
+      }
+
+      // ---------------------------------------------
+      // API ERROR
+      // ---------------------------------------------
+
+      if (!data.success) {
+        throw new Error(
+          data.error ||
+          "AI response failed."
+        );
+      }
+
+      // ---------------------------------------------
+      // AI RESPONSE
+      // ---------------------------------------------
+
+      setMessages((prev) =>
+        prev.map((item) =>
+          item.id === aiId
+            ? {
+                ...item,
+                content:
+                  data.reply ||
+                  "Nova AI did not return a response.",
+              }
+            : item
+        )
+      );
+
+    } catch (error) {
+      console.error(
+        "NOVA AI CHAT ERROR:",
+        error
+      );
+
+      const errorText =
+        error?.message ||
+        "Failed to connect to Nova AI.";
+
+      setBackendError(errorText);
+
+      setMessages((prev) =>
+        prev.map((item) =>
+          item.id === aiId
+            ? {
+                ...item,
+                content:
+                  "⚠️ " +
+                  errorText,
+              }
+            : item
+        )
+      );
+
+    } finally {
+      setLoading(false);
+
       setImage(null);
       setFile(null);
 
-      localStorage.removeItem(
-        "novaMessages"
-      );
-
-      if (
-        imageInputRef.current
-      ) {
-        imageInputRef.current.value =
-          "";
+      if (imageInputRef.current) {
+        imageInputRef.current.value = "";
       }
 
-      if (
-        fileInputRef.current
-      ) {
-        fileInputRef.current.value =
-          "";
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
       }
 
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
-    };
+    }
+  };
+
+  // =====================================================
+  // ENTER
+  // =====================================================
+
+  const handleKeyDown = (e) => {
+    if (
+      e.key === "Enter" &&
+      !e.shiftKey
+    ) {
+      e.preventDefault();
+
+      // Fresh setting check
+      if (!isAIEnabled()) {
+        window.alert(
+          "AI Assistant is OFF.\n\nPlease enable it from Settings."
+        );
+
+        return;
+      }
+
+      sendMessage();
+    }
+  };
+
+  // =====================================================
+  // SUGGESTION
+  // =====================================================
+
+  const useSuggestion = (text) => {
+    if (!isAIEnabled()) {
+      window.alert(
+        "AI Assistant is OFF.\n\nPlease enable it from Settings."
+      );
+
+      return;
+    }
+
+    setInput(text);
+
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  };
+
+  // =====================================================
+  // IMAGE
+  // =====================================================
+
+  const handleImage = (e) => {
+    if (!isAIEnabled()) {
+      e.target.value = "";
+
+      window.alert(
+        "AI Assistant is OFF.\n\nPlease enable it from Settings."
+      );
+
+      return;
+    }
+
+    const selected =
+      e.target.files?.[0];
+
+    if (!selected) {
+      return;
+    }
+
+    setImage(selected);
+  };
+
+  // =====================================================
+  // FILE
+  // =====================================================
+
+  const handleFile = (e) => {
+    if (!isAIEnabled()) {
+      e.target.value = "";
+
+      window.alert(
+        "AI Assistant is OFF.\n\nPlease enable it from Settings."
+      );
+
+      return;
+    }
+
+    const selected =
+      e.target.files?.[0];
+
+    if (!selected) {
+      return;
+    }
+
+    setFile(selected);
+  };
+
+  // =====================================================
+  // REMOVE IMAGE
+  // =====================================================
+
+  const removeImage = () => {
+    setImage(null);
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
+  // =====================================================
+  // REMOVE FILE
+  // =====================================================
+
+  const removeFile = () => {
+    setFile(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // =====================================================
+  // CLEAR CHAT
+  // =====================================================
+
+  const clearChat = () => {
+    setMessages([]);
+
+    setInput("");
+
+    setImage(null);
+
+    setFile(null);
+
+    setBackendError("");
+
+    localStorage.removeItem(
+      "novaMessages"
+    );
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  };
 
   const hasMessages =
     messages.length > 0;
+
+  // =====================================================
+  // UI
+  // =====================================================
 
   return (
     <div className="nova-page">
 
       <div className="nova-chat">
 
-        {/* ==================================
+        {/* ==========================================
+            AI OFF BANNER
+        =========================================== */}
+
+        {!aiAssistant && (
+          <div className="ai-disabled-banner">
+            ⚠️ AI Assistant is OFF — turn it ON
+            from Settings to send messages.
+          </div>
+        )}
+
+        {/* ==========================================
             MESSAGES
-        ================================== */}
+        =========================================== */}
 
         <main className="nova-messages">
 
@@ -304,54 +632,65 @@ function ChatPage() {
               </div>
 
               <h1>
-                Welcome to Nova AI
+                How can I help you?
               </h1>
 
               <p>
-                Your intelligent AI
-                assistant is ready
-                to help you.
+                Ask Nova AI anything
               </p>
 
-              <div className="suggestions">
+              {!aiAssistant && (
+                <div className="welcome-disabled">
+                  ⚠️ AI Assistant is OFF.
+                  <br />
+                  Enable it from Settings
+                  to start chatting.
+                </div>
+              )}
 
-                <button
-                  onClick={() =>
-                    useSuggestion(
-                      "Explain JavaScript in simple words"
-                    )
-                  }
-                >
-                  💡 Explain JavaScript
-                </button>
+              {aiAssistant && (
+                <div className="suggestions">
 
-                <button
-                  onClick={() =>
-                    useSuggestion(
-                      "Create a React website for me"
-                    )
-                  }
-                >
-                  ⚛️ Create React Website
-                </button>
+                  <button
+                    onClick={() =>
+                      useSuggestion(
+                        "Explain JavaScript in simple words"
+                      )
+                    }
+                  >
+                    💡 Explain JavaScript
+                  </button>
 
-                <button
-                  onClick={() =>
-                    useSuggestion(
-                      "Give me some project ideas"
-                    )
-                  }
-                >
-                  🚀 Project Ideas
-                </button>
+                  <button
+                    onClick={() =>
+                      useSuggestion(
+                        "Create a React website for me"
+                      )
+                    }
+                  >
+                    ⚛️ Create React Website
+                  </button>
 
-              </div>
+                  <button
+                    onClick={() =>
+                      useSuggestion(
+                        "Give me some project ideas"
+                      )
+                    }
+                  >
+                    🚀 Project Ideas
+                  </button>
+
+                </div>
+              )}
 
             </div>
 
           ) : (
 
             <div className="conversation">
+
+              {/* Conversation Header */}
 
               <div className="conversation-header">
 
@@ -360,26 +699,29 @@ function ChatPage() {
                 </span>
 
                 <button
-                  onClick={
-                    clearChat
-                  }
+                  type="button"
+                  onClick={clearChat}
                 >
                   🗑 Clear Chat
                 </button>
 
               </div>
 
+              {/* Messages */}
+
               {messages.map(
                 (message) => (
 
                   <div
-                    key={
-                      message.id
-                    }
+                    key={message.id}
                     className={
-                      `chat-row ${message.role}`
+                      `chat-row ${
+                        message.role
+                      }`
                     }
                   >
+
+                    {/* AI Avatar */}
 
                     {message.role ===
                       "assistant" && (
@@ -390,9 +732,13 @@ function ChatPage() {
 
                     )}
 
+                    {/* Message */}
+
                     <div
                       className={
-                        `chat-message ${message.role}`
+                        `chat-message ${
+                          message.role
+                        }`
                       }
                     >
 
@@ -407,26 +753,28 @@ function ChatPage() {
                         {message.content}
                       </div>
 
+                      {/* Uploaded Image */}
+
                       {message.image && (
                         <img
-                          src={
-                            message.image
-                          }
+                          src={message.image}
                           alt="uploaded"
                           className="message-image"
                         />
                       )}
 
+                      {/* Uploaded File */}
+
                       {message.file && (
                         <div className="message-file">
                           📎{" "}
-                          {
-                            message.file
-                          }
+                          {message.file}
                         </div>
                       )}
 
                     </div>
+
+                    {/* User Avatar */}
 
                     {message.role ===
                       "user" && (
@@ -441,8 +789,9 @@ function ChatPage() {
                 )
               )}
 
-              {loading && (
+              {/* Loading */}
 
+              {loading && (
                 <div className="chat-row assistant">
 
                   <div className="avatar ai-avatar">
@@ -456,21 +805,18 @@ function ChatPage() {
                     </div>
 
                     <div className="typing">
-                      <span></span>
-                      <span></span>
-                      <span></span>
+                      <span />
+                      <span />
+                      <span />
                     </div>
 
                   </div>
 
                 </div>
-
               )}
 
               <div
-                ref={
-                  messagesEndRef
-                }
+                ref={messagesEndRef}
               />
 
             </div>
@@ -478,43 +824,32 @@ function ChatPage() {
 
         </main>
 
-        {/* ==================================
-            INPUT
-        ================================== */}
+        {/* ==========================================
+            INPUT AREA
+        =========================================== */}
 
         <div className="input-area">
 
-          {(image || file) && (
+          {/* Attachment Preview */}
 
+          {(image || file) && (
             <div className="attachment-preview">
 
-              {image && (
+              {/* Image */}
 
+              {image && (
                 <div className="image-preview">
 
                   <img
-                    src={
-                      URL.createObjectURL(
-                        image
-                      )
-                    }
+                    src={URL.createObjectURL(
+                      image
+                    )}
                     alt="preview"
                   />
 
                   <button
-                    onClick={() => {
-
-                      setImage(
-                        null
-                      );
-
-                      if (
-                        imageInputRef.current
-                      ) {
-                        imageInputRef.current.value =
-                          "";
-                      }
-                    }}
+                    type="button"
+                    onClick={removeImage}
                   >
                     ×
                   </button>
@@ -522,27 +857,17 @@ function ChatPage() {
                 </div>
               )}
 
-              {file && (
+              {/* File */}
 
+              {file && (
                 <div className="file-preview">
 
                   📎{" "}
                   {file.name}
 
                   <button
-                    onClick={() => {
-
-                      setFile(
-                        null
-                      );
-
-                      if (
-                        fileInputRef.current
-                      ) {
-                        fileInputRef.current.value =
-                          "";
-                      }
-                    }}
+                    type="button"
+                    onClick={removeFile}
                   >
                     ×
                   </button>
@@ -553,97 +878,107 @@ function ChatPage() {
             </div>
           )}
 
-          <div className="nova-input">
+          {/* Main Input */}
 
-            {/* IMAGE */}
+          <div
+            className={`nova-input ${
+              !aiAssistant
+                ? "input-disabled"
+                : ""
+            }`}
+          >
+
+            {/* Image */}
 
             <button
+              type="button"
               className="attach-button"
               onClick={() =>
                 imageInputRef.current?.click()
               }
               disabled={
-                loading
+                loading ||
+                !aiAssistant
               }
+              title="Upload image"
             >
               🖼️
             </button>
 
             <input
-              ref={
-                imageInputRef
-              }
+              ref={imageInputRef}
               type="file"
               accept="image/*"
               hidden
-              onChange={
-                handleImage
-              }
+              onChange={handleImage}
             />
 
-            {/* FILE */}
+            {/* File */}
 
             <button
+              type="button"
               className="attach-button"
               onClick={() =>
                 fileInputRef.current?.click()
               }
               disabled={
-                loading
+                loading ||
+                !aiAssistant
               }
+              title="Upload file"
             >
               📎
             </button>
 
             <input
-              ref={
-                fileInputRef
-              }
+              ref={fileInputRef}
               type="file"
               hidden
-              onChange={
-                handleFile
-              }
+              onChange={handleFile}
             />
 
-            {/* TEXT */}
+            {/* Text */}
 
             <textarea
-              ref={
-                inputRef
-              }
-              value={
-                input
-              }
+              ref={inputRef}
+              value={input}
               onChange={(e) =>
                 setInput(
                   e.target.value
                 )
               }
-              onKeyDown={
-                handleKeyDown
+              onKeyDown={handleKeyDown}
+              placeholder={
+                aiAssistant
+                  ? "Message Nova AI..."
+                  : "AI Assistant is OFF..."
               }
-              placeholder="Message Nova AI..."
               disabled={
-                loading
+                loading ||
+                !aiAssistant
               }
               rows="1"
             />
 
-            {/* SEND */}
+            {/* Send */}
 
             <button
+              type="button"
               className="send-button"
-              onClick={
-                sendMessage
-              }
+              onClick={sendMessage}
               disabled={
                 loading ||
+                !aiAssistant ||
                 (
                   !input.trim() &&
                   !image &&
                   !file
                 )
+              }
+              title={
+                aiAssistant
+                  ? "Send message"
+                  : "AI Assistant is OFF"
               }
             >
               {loading
@@ -652,6 +987,8 @@ function ChatPage() {
             </button>
 
           </div>
+
+          {/* Tools */}
 
           <div className="input-tools">
 
@@ -669,7 +1006,29 @@ function ChatPage() {
               Enter to send
             </span>
 
+            <b>•</b>
+
+            <span
+              className={
+                aiAssistant
+                  ? "ai-online"
+                  : "ai-offline"
+              }
+            >
+              {aiAssistant
+                ? "● AI ON"
+                : "● AI OFF"}
+            </span>
+
           </div>
+
+          {/* Backend Error */}
+
+          {backendError && (
+            <div className="backend-error">
+              ⚠️ {backendError}
+            </div>
+          )}
 
         </div>
 

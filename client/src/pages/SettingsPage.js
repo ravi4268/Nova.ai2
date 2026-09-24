@@ -1,99 +1,262 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+} from "react";
+
 import "./SettingsPage.css";
 
 function SettingsPage() {
+  // =====================================================
+  // DARK MODE
+  // =====================================================
+
   const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem("novaDarkMode") !== "false";
+    return (
+      localStorage.getItem(
+        "novaDarkMode"
+      ) !== "false"
+    );
   });
 
-  const [aiAssistant, setAiAssistant] = useState(() => {
-    return localStorage.getItem("novaAIAssistant") !== "false";
-  });
+  // =====================================================
+  // AI ASSISTANT
+  // =====================================================
 
-  // Dark Mode
+  const [aiAssistant, setAiAssistant] =
+    useState(() => {
+      return (
+        localStorage.getItem(
+          "novaAIAssistant"
+        ) !== "false"
+      );
+    });
+
+  // =====================================================
+  // DARK MODE EFFECT
+  // =====================================================
+
   useEffect(() => {
-    localStorage.setItem("novaDarkMode", darkMode);
+    localStorage.setItem(
+      "novaDarkMode",
+      String(darkMode)
+    );
 
     if (darkMode) {
-      document.body.classList.add("nova-dark");
-      document.body.classList.remove("nova-light");
+      document.body.classList.add(
+        "nova-dark"
+      );
+
+      document.body.classList.remove(
+        "nova-light"
+      );
     } else {
-      document.body.classList.add("nova-light");
-      document.body.classList.remove("nova-dark");
+      document.body.classList.add(
+        "nova-light"
+      );
+
+      document.body.classList.remove(
+        "nova-dark"
+      );
     }
   }, [darkMode]);
 
-  // AI Assistant
-  useEffect(() => {
-    localStorage.setItem("novaAIAssistant", aiAssistant);
+  // =====================================================
+  // AI SETTING EFFECT
+  // =====================================================
 
-    // App ke dusre components ko setting batane ke liye
+  useEffect(() => {
+    localStorage.setItem(
+      "novaAIAssistant",
+      String(aiAssistant)
+    );
+
     window.dispatchEvent(
-      new CustomEvent("nova-ai-setting", {
-        detail: {
-          enabled: aiAssistant,
-        },
-      })
+      new CustomEvent(
+        "nova-ai-setting",
+        {
+          detail: {
+            enabled: aiAssistant,
+          },
+        }
+      )
     );
   }, [aiAssistant]);
 
+  // =====================================================
+  // AI TOGGLE
+  // =====================================================
+
+  const toggleAI = () => {
+    const newValue =
+      !aiAssistant;
+
+    // Save immediately
+    localStorage.setItem(
+      "novaAIAssistant",
+      String(newValue)
+    );
+
+    setAiAssistant(newValue);
+
+    // ChatPage immediately update
+    window.dispatchEvent(
+      new CustomEvent(
+        "nova-ai-setting",
+        {
+          detail: {
+            enabled: newValue,
+          },
+        }
+      )
+    );
+
+    // OFF alert
+    if (!newValue) {
+      window.alert(
+        "AI Assistant is OFF.\n\nNew messages will not be sent until you turn it ON."
+      );
+    }
+  };
+
+  // =====================================================
+  // UI
+  // =====================================================
+
   return (
-    <div className="settings-page">
+    <div
+      className={`settings-page ${
+        darkMode
+          ? "dark"
+          : "light"
+      }`}
+    >
 
-      {/* Header */}
+      {/* ==========================================
+          HEADER
+      =========================================== */}
+
       <div className="settings-header">
-        <div className="settings-icon">⚙️</div>
 
-        <h1>Settings</h1>
-
-        <p>Manage your Nova.AI preferences.</p>
-      </div>
-
-      {/* Settings Cards */}
-      <div className="settings-list">
-
-        {/* Dark Mode */}
-        <div className="settings-card">
-          <div className="settings-content">
-            <h3>Dark Mode</h3>
-            <span>Nova AI dark interface</span>
-          </div>
-
-          <div className="settings-action">
-            <span className={darkMode ? "status-on" : "status-off"}>
-              {darkMode ? "ON" : "OFF"}
-            </span>
-
-            <button
-              className={`toggle ${darkMode ? "active" : ""}`}
-              onClick={() => setDarkMode(!darkMode)}
-              aria-label="Toggle Dark Mode"
-            >
-              <span className="toggle-circle"></span>
-            </button>
-          </div>
+        <div className="settings-icon">
+          ⚙️
         </div>
 
-        {/* AI Assistant */}
+        <h1>
+          Settings
+        </h1>
+
+        <p>
+          Manage your Nova AI preferences.
+        </p>
+
+      </div>
+
+      {/* ==========================================
+          SETTINGS LIST
+      =========================================== */}
+
+      <div className="settings-list">
+
+        {/* ========================================
+            DARK MODE
+        ========================================= */}
+
         <div className="settings-card">
+
           <div className="settings-content">
-            <h3>AI Assistant</h3>
-            <span>Enable AI responses</span>
+
+            <h3>
+              Dark Mode
+            </h3>
+
+            <span>
+              Nova AI dark interface
+            </span>
+
           </div>
 
           <div className="settings-action">
-            <span className={aiAssistant ? "status-on" : "status-off"}>
-              {aiAssistant ? "ON" : "OFF"}
+
+            <span
+              className={
+                darkMode
+                  ? "status-on"
+                  : "status-off"
+              }
+            >
+              {darkMode
+                ? "ON"
+                : "OFF"}
             </span>
 
             <button
-              className={`toggle ${aiAssistant ? "active" : ""}`}
-              onClick={() => setAiAssistant(!aiAssistant)}
+              type="button"
+              className={`toggle ${
+                darkMode
+                  ? "active"
+                  : ""
+              }`}
+              onClick={() =>
+                setDarkMode(
+                  (prev) => !prev
+                )
+              }
+              aria-label="Toggle Dark Mode"
+            >
+              <span className="toggle-circle" />
+            </button>
+
+          </div>
+
+        </div>
+
+        {/* ========================================
+            AI ASSISTANT
+        ========================================= */}
+
+        <div className="settings-card">
+
+          <div className="settings-content">
+
+            <h3>
+              AI Assistant
+            </h3>
+
+            <span>
+              Enable AI responses
+            </span>
+
+          </div>
+
+          <div className="settings-action">
+
+            <span
+              className={
+                aiAssistant
+                  ? "status-on"
+                  : "status-off"
+              }
+            >
+              {aiAssistant
+                ? "ON"
+                : "OFF"}
+            </span>
+
+            <button
+              type="button"
+              className={`toggle ${
+                aiAssistant
+                  ? "active"
+                  : ""
+              }`}
+              onClick={toggleAI}
               aria-label="Toggle AI Assistant"
             >
-              <span className="toggle-circle"></span>
+              <span className="toggle-circle" />
             </button>
+
           </div>
+
         </div>
 
       </div>

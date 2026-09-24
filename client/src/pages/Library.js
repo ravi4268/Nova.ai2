@@ -4,49 +4,90 @@ import { buildProjectHtml } from "../utils/projectTemplate";
 
 const DEFAULT_PROJECT_NAME = "NOVA.AI";
 
+const API_URL =
+  process.env.REACT_APP_API_URL ||
+  (process.env.NODE_ENV === "production"
+    ? ""
+    : "http://localhost:5001");
+
 function Library() {
   const [activeTab, setActiveTab] = useState("all");
+
   const [activeProject, setActiveProject] = useState(() => {
     try {
       const saved = localStorage.getItem("novaActiveProject");
-      const project = saved ? JSON.parse(saved) : null;
-      if (project?.files?.["index.html"] && !project.files["index.html"].includes("anaya-shell-v3")) {
-        project.files["index.html"] = buildProjectHtml(project.name, project.files["index.html"]);
+
+      if (!saved) return null;
+
+      const project = JSON.parse(saved);
+
+      if (
+        project?.files?.["index.html"] &&
+        !project.files["index.html"].includes("anaya-shell-v3")
+      ) {
+        project.files["index.html"] = buildProjectHtml(
+          project.name,
+          project.files["index.html"]
+        );
       }
+
       return project;
     } catch {
       return null;
     }
   });
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [aiReply, setAiReply] = useState(() => {
-    try {
-      const saved = localStorage.getItem("novaActiveProject");
-      return saved ? JSON.parse(saved).aiReply || "" : "";
-    } catch {
-      return "";
-    }
-  });
-  const [aiLoading, setAiLoading] = useState(false);
 
   const [projects, setProjects] = useState(() => {
     try {
       const saved = localStorage.getItem("novaProjects");
       return saved ? JSON.parse(saved) : [];
     } catch {
-      return [];  
+      return [];
     }
   });
 
-  const [showModal, setShowModal] = useState(false);
-  const [projectName, setProjectName] = useState(DEFAULT_PROJECT_NAME);
-  const [memory, setMemory] = useState("Default memory");
-  const [search, setSearch] = useState("");
-  const [projectToDelete, setProjectToDelete] = useState(null);
+  const [aiPrompt, setAiPrompt] = useState(() => {
+    try {
+      const saved = localStorage.getItem("novaActiveProject");
 
-  // =====================================
+      if (!saved) return "";
+
+      return JSON.parse(saved)?.lastPrompt || "";
+    } catch {
+      return "";
+    }
+  });
+
+  const [aiReply, setAiReply] = useState(() => {
+    try {
+      const saved = localStorage.getItem("novaActiveProject");
+
+      if (!saved) return "";
+
+      return JSON.parse(saved)?.aiReply || "";
+    } catch {
+      return "";
+    }
+  });
+
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const [showModal, setShowModal] = useState(false);
+
+  const [projectName, setProjectName] =
+    useState(DEFAULT_PROJECT_NAME);
+
+  const [memory, setMemory] =
+    useState("Default memory");
+
+  const [search, setSearch] = useState("");
+
+  const [projectToDelete, setProjectToDelete] =
+    useState(null);
+
+  // ==========================================
   // SAVE PROJECTS
-  // =====================================
+  // ==========================================
 
   useEffect(() => {
     localStorage.setItem(
@@ -55,9 +96,22 @@ function Library() {
     );
   }, [projects]);
 
-  // =====================================
-  // OPEN MODAL
-  // =====================================
+  // ==========================================
+  // SAVE ACTIVE PROJECT
+  // ==========================================
+
+  useEffect(() => {
+    if (activeProject) {
+      localStorage.setItem(
+        "novaActiveProject",
+        JSON.stringify(activeProject)
+      );
+    }
+  }, [activeProject]);
+
+  // ==========================================
+  // CREATE MODAL
+  // ==========================================
 
   const openCreateModal = () => {
     setProjectName(DEFAULT_PROJECT_NAME);
@@ -65,54 +119,59 @@ function Library() {
     setShowModal(true);
   };
 
-  // =====================================
-  // CLOSE MODAL
-  // =====================================
-
   const closeCreateModal = () => {
     setShowModal(false);
     setProjectName(DEFAULT_PROJECT_NAME);
   };
 
-  // =====================================
+  // ==========================================
   // CREATE PROJECT
-  // =====================================
+  // ==========================================
 
- const createProject = () => {
-  const name = projectName.trim();
+  const createProject = () => {
+    const name = projectName.trim();
 
-  if (!name) return;
+    if (!name) return;
 
-  const newProject = {
-    id: Date.now(),
-    name: name,
-    type: "Created by you",
-    modified: "Just now",
-    memory: memory,
-    files: {
-      "index.html": createStarterHtml(name),
-      "README.md": `# ${name}\n\nA responsive project created with Nova AI.`
-    }
+    const newProject = {
+      id: Date.now(),
+      name,
+      type: "Created by you",
+      modified: "Just now",
+      memory,
+
+      files: {
+        "index.html": createStarterHtml(name),
+
+        "README.md": `# ${name}
+
+A responsive project created with Nova AI.
+`,
+      },
+
+      aiReply: "",
+      lastPrompt: "",
+    };
+
+    setProjects((prev) => [
+      newProject,
+      ...prev,
+    ]);
+
+    setActiveTab("all");
+    setShowModal(false);
+    setProjectName("");
+
+    openProject(newProject);
   };
-
-  setProjects((prev) => [
-    newProject,
-    ...prev
-  ]);
-
-  setActiveTab("all");
-  setShowModal(false);
-  setProjectName("");
-  openProject(newProject);
-};
 
   function createStarterHtml(name) {
     return buildProjectHtml(name);
   }
 
-  // =====================================
-  // ENTER KEY
-  // =====================================
+  // ==========================================
+  // ENTER / ESC
+  // ==========================================
 
   const handleProjectKeyDown = (e) => {
     if (e.key === "Enter") {
@@ -125,9 +184,9 @@ function Library() {
     }
   };
 
-  // =====================================
-  // FILTER
-  // =====================================
+  // ==========================================
+  // FILTER PROJECTS
+  // ==========================================
 
   const filteredProjects = useMemo(() => {
     let result = [...projects];
@@ -157,168 +216,641 @@ function Library() {
     return result;
   }, [projects, activeTab, search]);
 
-  // =====================================
+  // ==========================================
   // OPEN PROJECT
-  // =====================================
+  // ==========================================
 
   const openProject = (project) => {
-    const hydratedProject = project.files ? { ...project, files: { ...project.files } } : {
-      ...project,
-      files: { "index.html": createStarterHtml(project.name), "README.md": `# ${project.name}\n\nA responsive project created with Nova AI.` }
-    };
-    if (!hydratedProject.files["index.html"]?.includes("anaya-shell-v3")) {
-      hydratedProject.files["index.html"] = buildProjectHtml(hydratedProject.name, hydratedProject.files["index.html"]);
-      setProjects((prev) => prev.map((item) => (
-        item.id === hydratedProject.id ? hydratedProject : item
-      )));
+    const hydratedProject = project.files
+      ? {
+          ...project,
+          files: {
+            ...project.files,
+          },
+        }
+      : {
+          ...project,
+          files: {
+            "index.html": createStarterHtml(
+              project.name
+            ),
+            "README.md": `# ${project.name}
+
+A responsive project created with Nova AI.
+`,
+          },
+        };
+
+    if (
+      !hydratedProject.files["index.html"]
+        ?.includes("anaya-shell-v3")
+    ) {
+      hydratedProject.files["index.html"] =
+        buildProjectHtml(
+          hydratedProject.name,
+          hydratedProject.files["index.html"]
+        );
+
+      setProjects((prev) =>
+        prev.map((item) =>
+          item.id === hydratedProject.id
+            ? hydratedProject
+            : item
+        )
+      );
     }
+
     setActiveProject(hydratedProject);
-    setAiReply(hydratedProject.aiReply || "");
-    localStorage.setItem("novaActiveProject", JSON.stringify(hydratedProject));
+
+    setAiReply(
+      hydratedProject.aiReply || ""
+    );
+
+    setAiPrompt(
+      hydratedProject.lastPrompt || ""
+    );
+
+    localStorage.setItem(
+      "novaActiveProject",
+      JSON.stringify(hydratedProject)
+    );
   };
+
+  // ==========================================
+  // CLOSE PROJECT
+  // ==========================================
 
   const closeProject = () => {
     setActiveProject(null);
-    localStorage.removeItem("novaActiveProject");
+
+    localStorage.removeItem(
+      "novaActiveProject"
+    );
+
     setAiReply("");
     setAiPrompt("");
   };
 
-  const previewProject = () => {
-    if (!activeProject?.files?.["index.html"]) return;
-    const previewUrl = URL.createObjectURL(new Blob([activeProject.files["index.html"]], { type: "text/html" }));
-    window.open(previewUrl, "_blank", "noopener,noreferrer");
+  // ==========================================
+  // SAVE UPDATED PROJECT
+  // ==========================================
+
+  const saveUpdatedProject = (
+    updatedFiles,
+    reply,
+    prompt
+  ) => {
+    const updatedProject = {
+      ...activeProject,
+
+      files: {
+        ...activeProject.files,
+        ...updatedFiles,
+      },
+
+      aiReply: reply,
+      lastPrompt: prompt,
+      modified: "Just now",
+    };
+
+    setActiveProject(updatedProject);
+
+    setProjects((prev) =>
+      prev.map((project) =>
+        project.id === updatedProject.id
+          ? updatedProject
+          : project
+      )
+    );
+
+    localStorage.setItem(
+      "novaActiveProject",
+      JSON.stringify(updatedProject)
+    );
   };
+
+  // ==========================================
+  // PREVIEW PROJECT
+  // ==========================================
+
+  const previewProject = () => {
+    if (
+      !activeProject?.files?.["index.html"]
+    ) {
+      return;
+    }
+
+    const html =
+      activeProject.files["index.html"];
+
+    const previewUrl = URL.createObjectURL(
+      new Blob([html], {
+        type: "text/html",
+      })
+    );
+
+    const newWindow = window.open(
+      previewUrl,
+      "_blank",
+      "noopener,noreferrer"
+    );
+
+    if (!newWindow) {
+      alert(
+        "Please allow pop-ups to preview the project."
+      );
+    }
+
+    setTimeout(() => {
+      URL.revokeObjectURL(previewUrl);
+    }, 10000);
+  };
+
+  // ==========================================
+  // DOWNLOAD PROJECT
+  // ==========================================
 
   const downloadProject = () => {
     if (!activeProject) return;
-    const content = activeProject.files?.["index.html"] || createStarterHtml(activeProject.name);
-    const downloadUrl = URL.createObjectURL(new Blob([content], { type: "text/html" }));
-    const link = document.createElement("a");
+
+    const content =
+      activeProject.files?.["index.html"] ||
+      createStarterHtml(
+        activeProject.name
+      );
+
+    const downloadUrl =
+      URL.createObjectURL(
+        new Blob([content], {
+          type: "text/html",
+        })
+      );
+
+    const link =
+      document.createElement("a");
+
     link.href = downloadUrl;
-    link.download = `${activeProject.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "nova-project"}.html`;
+
+    link.download =
+      `${
+        activeProject.name
+          .replace(
+            /[^a-z0-9]+/gi,
+            "-"
+          )
+          .toLowerCase() ||
+        "nova-project"
+      }.html`;
+
+    document.body.appendChild(link);
+
     link.click();
-    URL.revokeObjectURL(downloadUrl);
+
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      URL.revokeObjectURL(downloadUrl);
+    }, 1000);
   };
+
+  // ==========================================
+  // ASK NOVA AI
+  // ==========================================
 
   const askProjectAi = async (event) => {
     event.preventDefault();
-    const prompt = aiPrompt.trim();
-    if (!prompt || aiLoading || !activeProject) return;
+
+    const prompt =
+      aiPrompt.trim();
+
+    if (
+      !prompt ||
+      aiLoading ||
+      !activeProject
+    ) {
+      return;
+    }
+
     setAiLoading(true);
-    setAiReply("");
+
+    setAiReply(
+      "Nova AI is analyzing your project..."
+    );
+
     try {
-      const apiUrl = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === "production" ? "" : "http://localhost:5001");
-      const response = await fetch(`${apiUrl}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: `Project: ${activeProject.name}. Files: ${Object.keys(activeProject.files || {}).join(", ")}. User request: ${prompt}`, history: [] })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "AI request failed");
-      setAiReply(data.reply || "Nova AI has no suggestion yet.");
+      // Send COMPLETE project files to AI
+      const response = await fetch(
+        `${API_URL}/api/project-ai`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            projectName:
+              activeProject.name,
+
+            prompt,
+
+            files:
+              activeProject.files || {},
+          }),
+        }
+      );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "AI request failed"
+        );
+      }
+
+      // =====================================
+      // AI RETURNED UPDATED FILES
+      // =====================================
+
+      if (
+        data.files &&
+        typeof data.files === "object"
+      ) {
+        saveUpdatedProject(
+          data.files,
+          data.reply ||
+            "Project updated successfully.",
+          prompt
+        );
+
+        setAiReply(
+          data.reply ||
+            "Your project has been updated successfully."
+        );
+      } else {
+        // AI reply only
+        setAiReply(
+          data.reply ||
+            "Nova AI completed the request."
+        );
+
+        const updatedProject = {
+          ...activeProject,
+          aiReply:
+            data.reply || "",
+          lastPrompt: prompt,
+          modified: "Just now",
+        };
+
+        setActiveProject(
+          updatedProject
+        );
+
+        setProjects((prev) =>
+          prev.map((project) =>
+            project.id ===
+            updatedProject.id
+              ? updatedProject
+              : project
+          )
+        );
+      }
+
+      setAiPrompt("");
     } catch (error) {
-      setAiReply("AI is offline right now. Your project is still ready to preview and download. Try again when the Nova server is running.");
+      console.error(
+        "Nova Project AI Error:",
+        error
+      );
+
+      setAiReply(
+        `❌ Nova AI could not update the project.
+
+${error.message}
+
+Make sure your Nova AI backend is running on ${API_URL}.`
+      );
     } finally {
       setAiLoading(false);
-      setAiPrompt("");
     }
   };
 
+  // ==========================================
+  // DELETE PROJECT
+  // ==========================================
+
   const deleteProject = () => {
-    if (!projectToDelete) return;
+    if (!projectToDelete) {
+      return;
+    }
 
     setProjects((prev) =>
-      prev.filter((project) => project.id !== projectToDelete.id)
+      prev.filter(
+        (project) =>
+          project.id !==
+          projectToDelete.id
+      )
     );
+
+    if (
+      activeProject?.id ===
+      projectToDelete.id
+    ) {
+      closeProject();
+    }
+
     setProjectToDelete(null);
   };
+
+  // ==========================================
+  // PROJECT WORKSPACE
+  // ==========================================
 
   if (activeProject) {
     return (
       <div className="project-workspace">
+
+        {/* TOP BAR */}
+
         <div className="workspace-topbar">
-          <button type="button" className="back-project" onClick={closeProject}>← Projects</button>
-          <div className="workspace-title"><span>📁</span><strong>{activeProject.name}</strong><small>Saved locally · {activeProject.memory}</small></div>
-          <div className="workspace-actions">
-            <button type="button" className="workspace-button" onClick={previewProject}>▶ Open preview</button>
-            <button type="button" className="workspace-button primary" onClick={downloadProject}>↓ Download</button>
+
+          <button
+            type="button"
+            className="back-project"
+            onClick={closeProject}
+          >
+            ← Projects
+          </button>
+
+          <div className="workspace-title">
+
+            <span>📁</span>
+
+            <div>
+              <strong>
+                {activeProject.name}
+              </strong>
+
+              <small>
+                Saved locally ·{" "}
+                {activeProject.memory ||
+                  "Default memory"}
+              </small>
+            </div>
+
           </div>
+
+          <div className="workspace-actions">
+
+            <button
+              type="button"
+              className="workspace-button"
+              onClick={previewProject}
+            >
+              ▶ Open preview
+            </button>
+
+            <button
+              type="button"
+              className="workspace-button primary"
+              onClick={downloadProject}
+            >
+              ↓ Download
+            </button>
+
+          </div>
+
         </div>
+
+        {/* WORKSPACE */}
+
         <div className="workspace-grid">
+
+          {/* FILES */}
+
           <section className="workspace-editor">
-            <div className="workspace-section-heading"><span>Project files</span><small>{Object.keys(activeProject.files || {}).length} files</small></div>
+
+            <div className="workspace-section-heading">
+
+              <span>
+                Project files
+              </span>
+
+              <small>
+                {
+                  Object.keys(
+                    activeProject.files || {}
+                  ).length
+                }{" "}
+                files
+              </small>
+
+            </div>
+
             <div className="file-list">
-              {Object.entries(activeProject.files || {}).map(([fileName, fileContent]) => (
-                <details className="file-item" key={fileName} open={fileName === "index.html"}>
-                  <summary>📄 {fileName}</summary>
-                  <pre>{fileContent}</pre>
-                </details>
-              ))}
+
+              {Object.entries(
+                activeProject.files || {}
+              ).map(
+                ([
+                  fileName,
+                  fileContent,
+                ]) => (
+
+                  <details
+                    className="file-item"
+                    key={fileName}
+                    open={
+                      fileName ===
+                      "index.html"
+                    }
+                  >
+
+                    <summary>
+                      📄 {fileName}
+                    </summary>
+
+                    <pre>
+                      {fileContent}
+                    </pre>
+
+                  </details>
+
+                )
+              )}
+
             </div>
+
+            {/* PREVIEW */}
+
             <div className="preview-card">
-              <div><span className="status-dot" />Ready to run</div>
-              <p>Your responsive starter is live. Open the preview to test it in a new tab.</p>
-              <button type="button" className="preview-link" onClick={previewProject}>Run project ↗</button>
+
+              <div>
+                <span className="status-dot" />
+
+                Ready to run
+              </div>
+
+              <p>
+                Your responsive project
+                is ready. Ask Nova AI to
+                change the design or open
+                the preview.
+              </p>
+
+              <button
+                type="button"
+                className="preview-link"
+                onClick={
+                  previewProject
+                }
+              >
+                Run project ↗
+              </button>
+
             </div>
+
           </section>
+
+          {/* NOVA AI */}
+
           <aside className="project-ai-panel">
-            <div className="ai-panel-heading"><span className="ai-spark">✦</span><div><strong>Nova AI</strong><small>Build with your project</small></div></div>
-            <div className="ai-reply">{aiReply || "Tell me what to build next. I can plan a page, improve the design, or explain any file."}</div>
-            <form className="ai-form" onSubmit={askProjectAi}>
-              <textarea value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} placeholder="Ask AI to improve this project..." rows="4" />
-              <button type="submit" disabled={aiLoading || !aiPrompt.trim()}>{aiLoading ? "Thinking..." : "Ask Nova AI ✨"}</button>
+
+            <div className="ai-panel-heading">
+
+              <span className="ai-spark">
+                ✦
+              </span>
+
+              <div>
+
+                <strong>
+                  Nova AI
+                </strong>
+
+                <small>
+                  Build with your project
+                </small>
+
+              </div>
+
+            </div>
+
+            <div className="ai-panel-divider" />
+
+            <div className="ai-reply">
+
+              {aiReply ? (
+                <div className="ai-reply-content">
+                  {aiReply}
+                </div>
+              ) : (
+                <>
+                  Tell me what to build
+                  next. I can plan a page,
+                  improve the design, or
+                  explain any file.
+                </>
+              )}
+
+            </div>
+
+            <form
+              className="ai-form"
+              onSubmit={
+                askProjectAi
+              }
+            >
+
+              <textarea
+                value={aiPrompt}
+                onChange={(event) =>
+                  setAiPrompt(
+                    event.target.value
+                  )
+                }
+                placeholder="Ask AI to improve this project..."
+                rows={5}
+                disabled={aiLoading}
+              />
+
+              <button
+                type="submit"
+                disabled={
+                  aiLoading ||
+                  !aiPrompt.trim()
+                }
+              >
+
+                {aiLoading
+                  ? "Nova AI is working..."
+                  : "Ask Nova AI ✨"}
+
+              </button>
+
             </form>
+
           </aside>
+
         </div>
       </div>
     );
   }
 
+  // ==========================================
+  // LIBRARY PAGE
+  // ==========================================
+
   return (
     <div className="library-page">
 
-      {/* =================================
-          HEADER
-      ================================= */}
+      {/* HEADER */}
 
       <div className="library-header">
 
         <div className="library-title">
 
-          <h1>Projects</h1>
+          <h1>
+            Projects
+          </h1>
 
           <p>
-            Organize your chats, files and memories.
+            Organize your chats,
+            files and memories.
           </p>
 
         </div>
 
         <div className="library-actions">
 
-          {/* SEARCH */}
-
           <div className="search-box">
 
-            <span>🔍</span>
+            <span>
+              🔍
+            </span>
 
             <input
               type="text"
               placeholder="Search projects"
               value={search}
               onChange={(e) =>
-                setSearch(e.target.value)
+                setSearch(
+                  e.target.value
+                )
               }
             />
 
           </div>
 
-          {/* NEW BUTTON */}
-
           <button
             type="button"
             className="new-project-button"
-            onClick={openCreateModal}
+            onClick={
+              openCreateModal
+            }
           >
             + New
           </button>
@@ -327,9 +859,7 @@ function Library() {
 
       </div>
 
-      {/* =================================
-          TABS
-      ================================= */}
+      {/* TABS */}
 
       <div className="library-tabs">
 
@@ -377,21 +907,21 @@ function Library() {
 
       </div>
 
-      {/* =================================
-          PROJECT TABLE HEADER
-      ================================= */}
+      {/* TABLE HEADER */}
 
       <div className="project-header">
 
-        <span>Name</span>
+        <span>
+          Name
+        </span>
 
-        <span>Modified</span>
+        <span>
+          Modified
+        </span>
 
       </div>
 
-      {/* =================================
-          PROJECT CONTENT
-      ================================= */}
+      {/* PROJECTS */}
 
       <div className="project-container">
 
@@ -408,15 +938,16 @@ function Library() {
             </h2>
 
             <p>
-              Create your first project to get started.
+              Create your first
+              project to get started.
             </p>
-
-            {/* CREATE PROJECT */}
 
             <button
               type="button"
               className="create-project-button"
-              onClick={openCreateModal}
+              onClick={
+                openCreateModal
+              }
             >
               + Create project
             </button>
@@ -438,8 +969,13 @@ function Library() {
                   <button
                     type="button"
                     className="project-open"
-                    onClick={() => openProject(project)}
+                    onClick={() =>
+                      openProject(
+                        project
+                      )
+                    }
                   >
+
                     <div className="project-info">
 
                       <div className="folder-icon">
@@ -459,6 +995,7 @@ function Library() {
                       </div>
 
                     </div>
+
                   </button>
 
                   <span className="project-date">
@@ -470,7 +1007,11 @@ function Library() {
                     className="delete-project"
                     aria-label={`Delete ${project.name}`}
                     title="Delete project"
-                    onClick={() => setProjectToDelete(project)}
+                    onClick={() =>
+                      setProjectToDelete(
+                        project
+                      )
+                    }
                   >
                     🗑
                   </button>
@@ -486,9 +1027,7 @@ function Library() {
 
       </div>
 
-      {/* =================================
-          CREATE PROJECT MODAL
-      ================================= */}
+      {/* CREATE MODAL */}
 
       {showModal && (
 
@@ -496,7 +1035,8 @@ function Library() {
           className="modal-overlay"
           onMouseDown={(e) => {
             if (
-              e.target === e.currentTarget
+              e.target ===
+              e.currentTarget
             ) {
               closeCreateModal();
             }
@@ -504,8 +1044,6 @@ function Library() {
         >
 
           <div className="create-modal">
-
-            {/* MODAL HEADER */}
 
             <div className="modal-header">
 
@@ -516,15 +1054,15 @@ function Library() {
               <button
                 type="button"
                 className="close-modal"
-                onClick={closeCreateModal}
+                onClick={
+                  closeCreateModal
+                }
                 aria-label="Close"
               >
                 ×
               </button>
 
             </div>
-
-            {/* PROJECT NAME */}
 
             <label className="project-label">
               Project name
@@ -553,8 +1091,6 @@ function Library() {
 
             </div>
 
-            {/* INFO */}
-
             <div className="project-info-box">
 
               <span className="info-icon">
@@ -562,15 +1098,15 @@ function Library() {
               </span>
 
               <p>
-                Projects keep chats, files, and
-                custom instructions in one place.
-                Use them for ongoing work, or just
+                Projects keep chats,
+                files, and custom
+                instructions in one
+                place. Use them for
+                ongoing work, or just
                 to keep things tidy.
               </p>
 
             </div>
-
-            {/* MEMORY */}
 
             <div className="memory-section">
 
@@ -581,9 +1117,12 @@ function Library() {
               <select
                 value={memory}
                 onChange={(e) =>
-                  setMemory(e.target.value)
+                  setMemory(
+                    e.target.value
+                  )
                 }
               >
+
                 <option>
                   Default memory
                 </option>
@@ -595,11 +1134,10 @@ function Library() {
                 <option>
                   No memory
                 </option>
+
               </select>
 
             </div>
-
-            {/* CREATE */}
 
             <div className="modal-footer">
 
@@ -610,8 +1148,12 @@ function Library() {
                     ? "modal-create active"
                     : "modal-create"
                 }
-                disabled={!projectName.trim()}
-                onClick={createProject}
+                disabled={
+                  !projectName.trim()
+                }
+                onClick={
+                  createProject
+                }
               >
                 Create project
               </button>
@@ -624,50 +1166,94 @@ function Library() {
 
       )}
 
+      {/* DELETE MODAL */}
+
       {projectToDelete && (
+
         <div
           className="modal-overlay"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              setProjectToDelete(null);
+            if (
+              e.target ===
+              e.currentTarget
+            ) {
+              setProjectToDelete(
+                null
+              );
             }
           }}
         >
-          <div className="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-project-title">
+
+          <div
+            className="delete-modal"
+            role="dialog"
+            aria-modal="true"
+          >
+
             <div className="modal-header">
-              <h2 id="delete-project-title">Delete project?</h2>
+
+              <h2>
+                Delete project?
+              </h2>
+
               <button
                 type="button"
                 className="close-modal"
-                onClick={() => setProjectToDelete(null)}
-                aria-label="Close"
+                onClick={() =>
+                  setProjectToDelete(
+                    null
+                  )
+                }
               >
                 ×
               </button>
+
             </div>
 
             <p className="delete-message">
-              This will permanently delete <strong>{projectToDelete.name}</strong> and its project data.
+
+              This will permanently
+              delete{" "}
+
+              <strong>
+                {projectToDelete.name}
+              </strong>
+
+              {" "}and its project
+              data.
+
             </p>
 
             <div className="delete-actions">
+
               <button
                 type="button"
                 className="cancel-delete"
-                onClick={() => setProjectToDelete(null)}
+                onClick={() =>
+                  setProjectToDelete(
+                    null
+                  )
+                }
               >
                 Cancel
               </button>
+
               <button
                 type="button"
                 className="confirm-delete"
-                onClick={deleteProject}
+                onClick={
+                  deleteProject
+                }
               >
                 Delete project
               </button>
+
             </div>
+
           </div>
+
         </div>
+
       )}
 
     </div>
