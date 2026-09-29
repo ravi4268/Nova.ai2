@@ -1,0 +1,818 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+
+  width: 100%;
+  min-height: 100%;
+
+  font-family:
+    Inter,
+    Arial,
+    sans-serif;
+
+  background: #070b11;
+
+  color: white;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* ================================================= */
+/* APP */
+/* ================================================= */
+
+.nova-app {
+  min-height: 100vh;
+
+  display: flex;
+
+  flex-direction: column;
+
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(62, 91, 140, 0.15),
+      transparent 40%
+    ),
+    #070b11;
+}
+
+/* ================================================= */
+/* HEADER */
+/* ================================================= */
+
+.nova-header {
+  height: 72px;
+
+  padding:
+    0 28px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  border-bottom:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
+  background:
+    rgba(10, 15, 23, 0.9);
+
+  backdrop-filter:
+    blur(15px);
+
+  position: sticky;
+
+  top: 0;
+
+  z-index: 20;
+}
+
+.nova-logo {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+}
+
+.nova-logo-icon {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7c5cff,
+      #27c8ff
+    );
+
+  font-weight: 800;
+
+  font-size: 19px;
+}
+
+.nova-logo strong {
+  display: block;
+
+  font-size: 18px;
+}
+
+.nova-logo span {
+  display: block;
+
+  margin-top: 2px;
+
+  color: #8995a8;
+
+  font-size: 12px;
+}
+
+.new-chat-btn {
+  border: 1px solid
+    rgba(255, 255, 255, 0.1);
+
+  background: #151d29;
+
+  color: white;
+
+  border-radius: 10px;
+
+  padding:
+    10px 15px;
+
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+.new-chat-btn:hover {
+  background: #202b3c;
+}
+
+/* ================================================= */
+/* MAIN */
+/* ================================================= */
+
+.nova-main {
+  width: 100%;
+
+  max-width: 1000px;
+
+  margin: auto;
+
+  flex: 1;
+
+  padding:
+    50px 20px
+    170px;
+}
+
+/* ================================================= */
+/* WELCOME */
+/* ================================================= */
+
+.welcome {
+  text-align: center;
+
+  padding:
+    40px 10px
+    60px;
+}
+
+.welcome-icon {
+  width: 62px;
+  height: 62px;
+
+  margin: auto;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7757ff,
+      #24c9ff
+    );
+
+  font-size: 32px;
+
+  box-shadow:
+    0 15px 50px
+    rgba(58, 133, 255, 0.25);
+}
+
+.welcome h1 {
+  margin:
+    22px 0 10px;
+
+  font-size:
+    clamp(30px, 6vw, 52px);
+
+  letter-spacing:
+    -1.5px;
+}
+
+.welcome p {
+  color: #8c98aa;
+
+  font-size: 16px;
+
+  max-width: 650px;
+
+  margin:
+    auto;
+}
+
+/* ================================================= */
+/* SUGGESTIONS */
+/* ================================================= */
+
+.suggestions {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  margin-top: 30px;
+}
+
+.suggestions button {
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.1);
+
+  background: #111925;
+
+  color: #dce5f5;
+
+  border-radius: 20px;
+
+  padding:
+    10px 15px;
+
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+.suggestions button:hover {
+  background: #1a2738;
+
+  transform:
+    translateY(-2px);
+}
+
+/* ================================================= */
+/* MESSAGES */
+/* ================================================= */
+
+.messages {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 28px;
+}
+
+.message-row {
+  display: flex;
+
+  gap: 13px;
+
+  align-items: flex-start;
+}
+
+.message-row.user {
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+
+  flex: 0 0 38px;
+
+  border-radius: 12px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  background: #182333;
+
+  color: #cbd7e9;
+
+  font-weight: 700;
+}
+
+.message-row.user .avatar {
+  background:
+    linear-gradient(
+      135deg,
+      #6c54ff,
+      #28a9ff
+    );
+}
+
+.message-content {
+  max-width: min(
+    750px,
+    80%
+  );
+}
+
+.message-name {
+  color: #8995a8;
+
+  font-size: 12px;
+
+  margin-bottom: 7px;
+}
+
+.message-text {
+  white-space: pre-wrap;
+
+  line-height: 1.65;
+
+  color: #e9eef7;
+
+  background: #111925;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.07);
+
+  border-radius: 14px;
+
+  padding:
+    13px 16px;
+}
+
+.message-row.user
+  .message-text {
+  background:
+    linear-gradient(
+      135deg,
+      #5d49d9,
+      #2d77bd
+    );
+}
+
+/* ================================================= */
+/* IMAGE */
+/* ================================================= */
+
+.message-image {
+  display: block;
+
+  width: min(
+    430px,
+    100%
+  );
+
+  max-height: 500px;
+
+  object-fit: cover;
+
+  border-radius: 16px;
+
+  margin-bottom: 10px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.1);
+}
+
+/* ================================================= */
+/* TYPING */
+/* ================================================= */
+
+.typing {
+  display: flex;
+
+  gap: 5px;
+
+  background: #111925;
+
+  border-radius: 14px;
+
+  padding:
+    15px 18px;
+
+  width: 65px;
+}
+
+.typing span {
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+
+  background: #91a1b9;
+
+  animation:
+    typing 1.2s infinite;
+}
+
+.typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+
+    transform:
+      translateY(0);
+  }
+
+  30% {
+    opacity: 1;
+
+    transform:
+      translateY(-3px);
+  }
+}
+
+/* ================================================= */
+/* PREVIEW */
+/* ================================================= */
+
+.upload-preview {
+  position: fixed;
+
+  bottom: 118px;
+
+  left: 50%;
+
+  transform:
+    translateX(-50%);
+
+  width:
+    min(
+      900px,
+      calc(100% - 30px)
+    );
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 13px;
+
+  padding: 10px;
+
+  background:
+    rgba(17, 25, 37, 0.97);
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.1);
+
+  border-radius: 14px;
+
+  z-index: 30;
+
+  box-shadow:
+    0 20px 70px
+    rgba(0, 0, 0, 0.4);
+}
+
+.upload-preview img {
+  width: 60px;
+  height: 60px;
+
+  object-fit: cover;
+
+  border-radius: 10px;
+}
+
+.preview-info {
+  flex: 1;
+
+  min-width: 0;
+}
+
+.preview-info strong {
+  display: block;
+
+  overflow: hidden;
+
+  white-space: nowrap;
+
+  text-overflow: ellipsis;
+
+  font-size: 13px;
+}
+
+.preview-info span {
+  display: block;
+
+  color: #6fb1ff;
+
+  font-size: 12px;
+
+  margin-top: 5px;
+}
+
+.upload-preview button {
+  width: 32px;
+  height: 32px;
+
+  border: 0;
+
+  border-radius: 50%;
+
+  background: #273246;
+
+  color: white;
+
+  font-size: 20px;
+
+  cursor: pointer;
+}
+
+/* ================================================= */
+/* INPUT */
+/* ================================================= */
+
+.input-area {
+  position: fixed;
+
+  bottom: 0;
+
+  left: 0;
+
+  right: 0;
+
+  padding:
+    15px 20px
+    20px;
+
+  background:
+    linear-gradient(
+      to top,
+      #070b11 70%,
+      transparent
+    );
+
+  z-index: 25;
+}
+
+.input-box {
+  width:
+    min(
+      900px,
+      100%
+    );
+
+  margin: auto;
+
+  min-height: 68px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 8px;
+
+  background: #111925;
+
+  border:
+    1px solid
+    #29384e;
+
+  border-radius: 20px;
+
+  box-shadow:
+    0 15px 50px
+    rgba(0, 0, 0, 0.4);
+}
+
+.input-box textarea {
+  flex: 1;
+
+  resize: none;
+
+  outline: none;
+
+  border: 0;
+
+  background: transparent;
+
+  color: white;
+
+  font-size: 16px;
+
+  line-height: 1.5;
+
+  padding:
+    10px 5px;
+
+  min-height: 45px;
+
+  max-height: 120px;
+}
+
+.input-box textarea::placeholder {
+  color: #69778b;
+}
+
+.attach-btn,
+.mic-btn,
+.send-btn {
+  flex: 0 0 auto;
+
+  width: 46px;
+  height: 46px;
+
+  border: 0;
+
+  border-radius: 14px;
+
+  cursor: pointer;
+
+  color: white;
+
+  font-size: 20px;
+}
+
+.attach-btn,
+.mic-btn {
+  background: transparent;
+}
+
+.attach-btn:hover,
+.mic-btn:hover {
+  background: #1c2838;
+}
+
+.send-btn {
+  background:
+    linear-gradient(
+      135deg,
+      #7a5cff,
+      #28bfff
+    );
+}
+
+.send-btn:disabled {
+  opacity: 0.4;
+
+  cursor: not-allowed;
+}
+
+.input-hint {
+  width:
+    min(
+      900px,
+      100%
+    );
+
+  margin:
+    8px auto 0;
+
+  text-align: center;
+
+  color: #68778d;
+
+  font-size: 11px;
+}
+
+/* ================================================= */
+/* MOBILE */
+/* ================================================= */
+
+@media (max-width: 700px) {
+  .nova-header {
+    height: 62px;
+
+    padding:
+      0 14px;
+  }
+
+  .nova-logo-icon {
+    width: 34px;
+    height: 34px;
+
+    border-radius: 9px;
+  }
+
+  .nova-logo strong {
+    font-size: 15px;
+  }
+
+  .nova-logo span {
+    display: none;
+  }
+
+  .new-chat-btn {
+    padding:
+      8px 11px;
+
+    font-size: 12px;
+  }
+
+  .nova-main {
+    padding:
+      30px 12px
+      155px;
+  }
+
+  .welcome {
+    padding:
+      25px 5px
+      40px;
+  }
+
+  .welcome h1 {
+    font-size: 32px;
+  }
+
+  .welcome p {
+    font-size: 14px;
+  }
+
+  .suggestions {
+    gap: 7px;
+  }
+
+  .suggestions button {
+    font-size: 12px;
+
+    padding:
+      8px 11px;
+  }
+
+  .message-content {
+    max-width: 82%;
+  }
+
+  .message-text {
+    font-size: 14px;
+
+    padding:
+      11px 13px;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+
+    flex-basis: 32px;
+
+    border-radius: 10px;
+  }
+
+  .input-area {
+    padding:
+      9px 9px
+      13px;
+  }
+
+  .input-box {
+    min-height: 58px;
+
+    border-radius: 16px;
+  }
+
+  .input-box textarea {
+    font-size: 14px;
+  }
+
+  .attach-btn,
+  .mic-btn,
+  .send-btn {
+    width: 39px;
+    height: 39px;
+
+    font-size: 17px;
+
+    border-radius: 11px;
+  }
+
+  .upload-preview {
+    bottom: 105px;
+
+    width:
+      calc(100% - 18px);
+  }
+}

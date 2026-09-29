@@ -9,48 +9,102 @@ function Images() {
   const [attachedImage, setAttachedImage] = useState(null);
 
   const fileInputRef = useRef(null);
+  const suggestionsRef = useRef(null);
+
+  // =====================================================
+  // IMAGE SUGGESTIONS
+  // =====================================================
 
   const suggestions = [
     {
-      title: "Create a caricature",
+      title: "Caricature",
       prompt:
         "Create a beautiful colorful cartoon caricature with a modern AI art style",
       image:
-        "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=900&q=90",
+        "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=1000&q=90",
     },
     {
       title: "Futuristic AI",
       prompt:
         "Create a futuristic AI robot standing in a modern city with neon lights",
       image:
-        "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=900&q=90",
+        "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1000&q=90",
     },
     {
       title: "Anime",
       prompt:
         "Create a high quality anime character standing under a beautiful blue sky",
       image:
-        "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=900&q=90",
+        "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=1000&q=90",
     },
     {
-      title: "Nature",
+      title: "Sunset",
       prompt:
-        "Create a beautiful cinematic mountain landscape with blue sky and clouds",
+        "Create a cinematic sunset over beautiful mountains with dramatic lighting",
       image:
-        "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=900&q=90",
+        "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1000&q=90",
     },
     {
-      title: "Summer list",
+      title: "Ocean",
       prompt:
-        "Create a colorful summer vacation illustration with food, mountains and nature",
+        "Create a beautiful peaceful ocean beach with a cinematic blue sky",
       image:
-        "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=90",
+        "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=90",
+    },
+    {
+      title: "Flowers",
+      prompt:
+        "Create a luxurious colorful flower arrangement in a dark artistic style",
+      image:
+        "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1000&q=90",
+    },
+    {
+      title: "Mountain",
+      prompt:
+        "Create a majestic mountain landscape with clouds and cinematic lighting",
+      image:
+        "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=1000&q=90",
+    },
+    {
+      title: "Cyber City",
+      prompt:
+        "Create a futuristic cyberpunk city with neon lights at night",
+      image:
+        "https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=1000&q=90",
+    },
+    {
+      title: "Space",
+      prompt:
+        "Create a cinematic space scene with planets, stars and futuristic lights",
+      image:
+        "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?auto=format&fit=crop&w=1000&q=90",
+    },
+    {
+      title: "Architecture",
+      prompt:
+        "Create a modern luxury architectural building with cinematic photography",
+      image:
+        "https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&w=1000&q=90",
+    },
+    {
+      title: "Portrait",
+      prompt:
+        "Create a cinematic artistic portrait with professional studio lighting",
+      image:
+        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=1000&q=90",
+    },
+    {
+      title: "Travel",
+      prompt:
+        "Create a beautiful luxury travel destination with mountains and nature",
+      image:
+        "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1000&q=90",
     },
   ];
 
-  // ==========================================
-  // SELECT IMAGE
-  // ==========================================
+  // =====================================================
+  // ATTACH IMAGE
+  // =====================================================
 
   const handleAttach = (event) => {
     const file = event.target.files?.[0];
@@ -62,12 +116,17 @@ function Images() {
       return;
     }
 
+    if (file.size > 20 * 1024 * 1024) {
+      alert("Image size must be less than 20MB.");
+      return;
+    }
+
     setAttachedImage(file);
   };
 
-  // ==========================================
-  // REMOVE ATTACHMENT
-  // ==========================================
+  // =====================================================
+  // REMOVE IMAGE
+  // =====================================================
 
   const removeAttachment = () => {
     setAttachedImage(null);
@@ -77,9 +136,9 @@ function Images() {
     }
   };
 
-  // ==========================================
+  // =====================================================
   // VOICE INPUT
-  // ==========================================
+  // =====================================================
 
   const startVoiceInput = () => {
     const SpeechRecognition =
@@ -104,14 +163,11 @@ function Images() {
     recognition.start();
 
     recognition.onresult = (event) => {
-      const voiceText =
-        event.results[0][0].transcript;
+      const voiceText = event.results[0][0].transcript;
 
-      setPrompt((previous) => {
-        return previous
-          ? `${previous} ${voiceText}`
-          : voiceText;
-      });
+      setPrompt((previous) =>
+        previous ? `${previous} ${voiceText}` : voiceText
+      );
     };
 
     recognition.onerror = () => {
@@ -123,53 +179,84 @@ function Images() {
     };
   };
 
-  // ==========================================
+  // =====================================================
   // GENERATE IMAGE
-  // ==========================================
+  // =====================================================
 
-  const generateImage = () => {
+  const generateImage = async () => {
     if (!prompt.trim() && !attachedImage) {
-      alert("Please describe the image first.");
+      alert("Please describe the image first or attach an image.");
       return;
     }
 
     setLoading(true);
     setGeneratedImage(null);
 
-    setTimeout(() => {
+    try {
+      /*
+        If your backend has a real image-generation endpoint,
+        use this section.
+
+        Example:
+
+        const formData = new FormData();
+        formData.append("prompt", prompt);
+
+        if (attachedImage) {
+          formData.append("image", attachedImage);
+        }
+
+        const response = await fetch(
+          "http://localhost:5001/api/generate-image",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const data = await response.json();
+
+        if (data.image) {
+          setGeneratedImage(data.image);
+          return;
+        }
+      */
+
+      // Temporary AI-style fallback
+      // This keeps the UI working even when image API
+      // is not connected yet.
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+
       const randomIndex = Math.floor(
         Math.random() * suggestions.length
       );
 
-      setGeneratedImage(
-        suggestions[randomIndex].image
-      );
-
+      setGeneratedImage(suggestions[randomIndex].image);
+    } catch (error) {
+      console.error("Image generation error:", error);
+      alert("Nova AI image generation failed.");
+    } finally {
       setLoading(false);
-    }, 1800);
+    }
   };
 
-  // ==========================================
-  // ENTER KEY
-  // ==========================================
+  // =====================================================
+  // ENTER
+  // =====================================================
 
   const handleKeyDown = (event) => {
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey
-    ) {
+    if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       generateImage();
     }
   };
 
-  // ==========================================
-  // SELECT SUGGESTION
-  // ==========================================
+  // =====================================================
+  // SELECT CARD
+  // =====================================================
 
   const selectSuggestion = (item) => {
     setPrompt(item.prompt);
-
     setGeneratedImage(null);
 
     window.scrollTo({
@@ -178,25 +265,40 @@ function Images() {
     });
   };
 
-  // ==========================================
+  // =====================================================
+  // SCROLL CARDS
+  // =====================================================
+
+  const scrollSuggestions = (direction) => {
+    if (!suggestionsRef.current) return;
+
+    const amount = 360;
+
+    suggestionsRef.current.scrollBy({
+      left: direction === "left" ? -amount : amount,
+      behavior: "smooth",
+    });
+  };
+
+  // =====================================================
   // DOWNLOAD
-  // ==========================================
+  // =====================================================
 
   const downloadImage = async () => {
     if (!generatedImage) return;
 
     try {
-      const response = await fetch(
-        generatedImage
-      );
+      const response = await fetch(generatedImage);
+
+      if (!response.ok) {
+        throw new Error("Download failed");
+      }
 
       const blob = await response.blob();
 
-      const url =
-        window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(blob);
 
-      const link =
-        document.createElement("a");
+      const link = document.createElement("a");
 
       link.href = url;
       link.download = "nova-ai-image.jpg";
@@ -209,50 +311,55 @@ function Images() {
 
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      alert("Image download failed.");
+      console.error(error);
+
+      // Fallback
+      window.open(generatedImage, "_blank");
     }
   };
 
   return (
     <div className="images-page">
 
-      {/* ==========================================
+      {/* =================================================
           HEADER
-      ========================================== */}
+      ================================================= */}
 
       <header className="images-header">
 
         <div className="images-heading">
-
           <h1>Images</h1>
 
           <p>
             Create beautiful images with Nova AI
           </p>
-
         </div>
 
         <div className="image-ai-badge">
-          ✨ <span>Nova AI</span>
+          <span>✨</span>
+          <span>Nova AI</span>
         </div>
 
       </header>
 
 
-      {/* ==========================================
-          PROMPT AREA
-      ========================================== */}
+      {/* =================================================
+          GENERATOR
+      ================================================= */}
 
       <section className="image-generator">
+
+        {/* ATTACHED IMAGE */}
 
         {attachedImage && (
           <div className="attached-image">
 
             <div className="attached-left">
 
-              <span className="attached-icon">
-                🖼️
-              </span>
+              <img
+                src={URL.createObjectURL(attachedImage)}
+                alt="Uploaded"
+              />
 
               <div>
                 <strong>
@@ -276,9 +383,12 @@ function Images() {
           </div>
         )}
 
+
+        {/* INPUT */}
+
         <div className="image-prompt-wrapper">
 
-          {/* ATTACHMENT */}
+          {/* ATTACH */}
 
           <button
             type="button"
@@ -300,7 +410,7 @@ function Images() {
           />
 
 
-          {/* TEXT INPUT */}
+          {/* PROMPT */}
 
           <input
             type="text"
@@ -314,7 +424,7 @@ function Images() {
           />
 
 
-          {/* MICROPHONE */}
+          {/* MIC */}
 
           <button
             type="button"
@@ -341,29 +451,22 @@ function Images() {
             disabled={loading}
             title="Generate image"
           >
-            {loading ? (
-              <span className="button-loader">
-                ✨
-              </span>
-            ) : (
-              "➤"
-            )}
+            {loading ? "✨" : "➤"}
           </button>
 
         </div>
 
 
         <div className="image-prompt-note">
-          ✨ Describe anything you want Nova AI
-          to create
+          ✨ Describe anything you want Nova AI to create
         </div>
 
       </section>
 
 
-      {/* ==========================================
+      {/* =================================================
           LOADING
-      ========================================== */}
+      ================================================= */}
 
       {loading && (
         <div className="image-loading">
@@ -384,9 +487,9 @@ function Images() {
       )}
 
 
-      {/* ==========================================
+      {/* =================================================
           GENERATED IMAGE
-      ========================================== */}
+      ================================================= */}
 
       {generatedImage && !loading && (
         <section className="generated-section">
@@ -428,9 +531,9 @@ function Images() {
       )}
 
 
-      {/* ==========================================
+      {/* =================================================
           CREATE AN IMAGE
-      ========================================== */}
+      ================================================= */}
 
       <section className="create-section">
 
@@ -442,14 +545,20 @@ function Images() {
 
             <button
               type="button"
-              aria-label="Previous"
+              aria-label="Previous images"
+              onClick={() =>
+                scrollSuggestions("left")
+              }
             >
               ‹
             </button>
 
             <button
               type="button"
-              aria-label="Next"
+              aria-label="Next images"
+              onClick={() =>
+                scrollSuggestions("right")
+              }
             >
               ›
             </button>
@@ -459,54 +568,54 @@ function Images() {
         </div>
 
 
-        {/* ==========================================
-            IMAGE CARDS
-        ========================================== */}
+        {/* =================================================
+            HORIZONTAL IMAGE SCROLL
+        ================================================= */}
 
-        <div className="image-suggestions">
+        <div
+          className="image-suggestions"
+          ref={suggestionsRef}
+        >
 
-          {suggestions.map(
-            (item, index) => (
+          {suggestions.map((item, index) => (
+            <button
+              type="button"
+              className="image-card"
+              key={index}
+              onClick={() =>
+                selectSuggestion(item)
+              }
+            >
 
-              <button
-                type="button"
-                className="image-card"
-                key={index}
-                onClick={() =>
-                  selectSuggestion(item)
-                }
-              >
+              <img
+                src={item.image}
+                alt={item.title}
+                loading="lazy"
+              />
 
-                <img
-                  src={item.image}
-                  alt={item.title}
-                />
+              <div className="image-card-overlay">
 
-                <div className="image-card-overlay">
+                <span>
+                  {item.title}
+                </span>
 
-                  <span>
-                    {item.title}
-                  </span>
+                <small>
+                  ✨
+                </small>
 
-                  <small>
-                    ✨
-                  </small>
+              </div>
 
-                </div>
-
-              </button>
-
-            )
-          )}
+            </button>
+          ))}
 
         </div>
 
       </section>
 
 
-      {/* ==========================================
+      {/* =================================================
           FEATURES
-      ========================================== */}
+      ================================================= */}
 
       <section className="image-features">
 
@@ -522,8 +631,7 @@ function Images() {
             </strong>
 
             <p>
-              Turn your ideas into beautiful
-              visuals.
+              Turn your ideas into beautiful visuals.
             </p>
           </div>
 
@@ -542,8 +650,7 @@ function Images() {
             </strong>
 
             <p>
-              Generate images quickly with
-              Nova AI.
+              Generate images quickly with Nova AI.
             </p>
           </div>
 
@@ -562,8 +669,7 @@ function Images() {
             </strong>
 
             <p>
-              Create unique images from simple
-              prompts.
+              Create unique images from simple prompts.
             </p>
           </div>
 

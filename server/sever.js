@@ -12,112 +12,46 @@ dotenv.config({
 });
 
 const app = express();
-const DEFAULT_PORT = Number(process.env.PORT) || 5000;
-const PORT = DEFAULT_PORT;
-const hasGeminiKey = !!process.env.GEMINI_API_KEY;
-const paymentOtps = new Map();
 
-// ========================================
-// GEMINI SETUP
-// ========================================
+// ======================================================
+// CONFIG
+// ======================================================
 
-if (!hasGeminiKey) {
-  console.warn("⚠️ GEMINI_API_KEY is missing in .env - demo mode enabled");
-}
-
+const PORT = Number(process.env.PORT) || 5001;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-// ========================================
+const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY);
+
+const paymentOtps = new Map();
+
+// ======================================================
+// GEMINI KEY CHECK
+// ======================================================
+
+if (hasGeminiKey) {
+  console.log("✅ GEMINI_API_KEY found");
+} else {
+  console.warn("⚠️ GEMINI_API_KEY missing");
+  console.warn("⚠️ Nova AI will run in demo/fallback mode");
+}
+
+// ======================================================
 // MIDDLEWARE
-// ========================================
+// ======================================================
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || true,
+    origin: true,
+    credentials: true,
   })
 );
 
-app.use(express.json({ limit: "20mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "30mb" }));
+app.use(express.urlencoded({ extended: true, limit: "30mb" }));
 
-function normalizeIndianPhone(phone) {
-  const digits = String(phone || "").replace(/\D/g, "");
-  return digits.length === 10 && /^[6-9]/.test(digits) ? `+91${digits}` : null;
-}
-
-async function sendSms(phone, otp) {
-  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_FROM_NUMBER) {
-    return false;
-  }
-
-  const credentials = Buffer.from(
-    `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
-  ).toString("base64");
-  const body = new URLSearchParams({
-    To: phone,
-    From: process.env.TWILIO_FROM_NUMBER,
-    Body: `Your Nova AI payment OTP is ${otp}. It expires in 10 minutes.`,
-  });
-  const response = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${credentials}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body,
-    }
-  );
-
-  if (!response.ok) throw new Error("SMS provider rejected the OTP request");
-  return true;
-}
-
-app.post("/api/payment/send-otp", async (req, res) => {
-  const phone = normalizeIndianPhone(req.body.phone);
-  if (!phone) {
-    return res.status(400).json({ success: false, error: "Enter a valid 10-digit Indian mobile number" });
-  }
-
-  const otp = String(crypto.randomInt(100000, 1000000));
-  paymentOtps.set(phone, {
-    hash: crypto.createHash("sha256").update(otp).digest("hex"),
-    expiresAt: Date.now() + 10 * 60 * 1000,
-    attempts: 0,
-  });
-
-  try {
-    const smsSent = await sendSms(phone, otp);
-    return res.json({ success: true, smsSent, demoOtp: smsSent ? undefined : otp });
-  } catch (error) {
-    paymentOtps.delete(phone);
-    return res.status(502).json({ success: false, error: "Could not send OTP SMS" });
-  }
-});
-
-app.post("/api/payment/verify-otp", (req, res) => {
-  const phone = normalizeIndianPhone(req.body.phone);
-  const record = paymentOtps.get(phone);
-  const submittedHash = crypto.createHash("sha256").update(String(req.body.otp || "")).digest("hex");
-
-  if (!record || Date.now() > record.expiresAt || record.attempts >= 5) {
-    paymentOtps.delete(phone);
-    return res.status(400).json({ success: false, error: "OTP expired. Please request a new OTP" });
-  }
-
-  record.attempts += 1;
-  if (submittedHash !== record.hash) {
-    return res.status(400).json({ success: false, error: "Incorrect OTP" });
-  }
-
-  paymentOtps.delete(phone);
-  return res.json({ success: true });
-});
-
-// ========================================
+// ======================================================
 // UPLOAD DIRECTORY
-// ========================================
+// ======================================================
 
 const uploadDir = path.join(__dirname, "uploads");
 
@@ -127,9 +61,11 @@ if (!fs.existsSync(uploadDir)) {
   });
 }
 
-// ========================================
+console.log("📁 Upload directory:", uploadDir);
+
+// ======================================================
 // MULTER
-// ========================================
+// ======================================================
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -139,13 +75,13 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const extension = path.extname(file.originalname);
 
-    const uniqueName =
+    const filename =
       Date.now() +
       "-" +
       Math.round(Math.random() * 1000000) +
       extension;
 
-    cb(null, uniqueName);
+    cb(null, filename);
   },
 });
 
@@ -157,112 +93,217 @@ const upload = multer({
   },
 });
 
-// ========================================
+// ======================================================
 // STATIC UPLOADS
-// ========================================
+// ======================================================
 
 app.use(
   "/uploads",
   express.static(uploadDir)
 );
 
-// ========================================
-// HOME
-// ========================================
+// ======================================================
+// HOME ROUTE
+// ======================================================
 
 app.get("/", (req, res) => {
-  res.json({
+  res.status(200).json({
     success: true,
+    app: "Nova AI",
     message: "Nova AI Backend is running 🚀",
+    port: PORT,
+    status: "online",
+  });
+});
+
+// ======================================================
+// TEST ROUTE
+// ======================================================
+
+app.get("/api/test", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Nova AI API is working ✅",
     port: PORT,
   });
 });
 
-// ========================================
-// TEST
-// ========================================
-
-app.get("/api/test", (req, res) => {
-  res.json({
-    success: true,
-    message: "Nova AI API is working ✅",
-  });
-});
+// ======================================================
+// CHAT GET TEST
+// ======================================================
 
 app.get("/api/chat", (req, res) => {
-  res.json({
+  res.status(200).json({
     success: true,
-    message: "Nova AI Chat API is working. Use POST /api/chat to send a message.",
+    message:
+      "Nova AI Chat API is working. Use POST /api/chat to send a message.",
   });
 });
 
-// ========================================
-// CONVERT MESSAGES FOR GEMINI
-// ========================================
+// ======================================================
+// PHONE
+// ======================================================
 
-function convertMessagesToGemini(messages, currentMessage) {
-  const result = [];
+function normalizeIndianPhone(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
 
-  // Add previous messages
-  if (Array.isArray(messages)) {
-    for (const msg of messages) {
-      if (msg.role && msg.content) {
-        result.push({
-          role: msg.role === "assistant" ? "model" : "user",
-          parts: [{ text: String(msg.content) }],
-        });
-      } else if (msg.user) {
-        result.push({
-          role: "user",
-          parts: [{ text: String(msg.user) }],
-        });
-      } else if (msg.ai) {
-        result.push({
-          role: "model",
-          parts: [{ text: String(msg.ai) }],
-        });
-      }
-    }
+  if (digits.length === 10 && /^[6-9]/.test(digits)) {
+    return `+91${digits}`;
   }
 
-  // Add current message
-  if (currentMessage) {
-    result.push({
-      role: "user",
-      parts: [{ text: currentMessage }],
+  return null;
+}
+
+// ======================================================
+// SMS
+// ======================================================
+
+async function sendSms(phone, otp) {
+  if (
+    !process.env.TWILIO_ACCOUNT_SID ||
+    !process.env.TWILIO_AUTH_TOKEN ||
+    !process.env.TWILIO_FROM_NUMBER
+  ) {
+    return false;
+  }
+
+  const credentials = Buffer.from(
+    `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
+  ).toString("base64");
+
+  const body = new URLSearchParams({
+    To: phone,
+    From: process.env.TWILIO_FROM_NUMBER,
+    Body: `Your Nova AI payment OTP is ${otp}. It expires in 10 minutes.`,
+  });
+
+  const response = await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`,
+    {
+      method: "POST",
+
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+
+      body,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("SMS provider rejected the OTP request");
+  }
+
+  return true;
+}
+
+// ======================================================
+// SEND OTP
+// ======================================================
+
+app.post("/api/payment/send-otp", async (req, res) => {
+  try {
+    const phone = normalizeIndianPhone(req.body.phone);
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        error: "Enter a valid 10-digit Indian mobile number",
+      });
+    }
+
+    const otp = String(
+      crypto.randomInt(100000, 1000000)
+    );
+
+    paymentOtps.set(phone, {
+      hash: crypto
+        .createHash("sha256")
+        .update(otp)
+        .digest("hex"),
+
+      expiresAt:
+        Date.now() + 10 * 60 * 1000,
+
+      attempts: 0,
+    });
+
+    const smsSent = await sendSms(phone, otp);
+
+    return res.json({
+      success: true,
+      smsSent,
+      demoOtp: smsSent ? undefined : otp,
+    });
+  } catch (error) {
+    console.error("OTP ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      error: "Could not send OTP",
     });
   }
+});
 
-  // Keep only last 20 exchanges (40 messages)
-  return result.slice(-40);
-}
+// ======================================================
+// VERIFY OTP
+// ======================================================
 
-function addImageToGeminiMessage(messages, image) {
-  if (!image || !messages.length) return;
+app.post("/api/payment/verify-otp", (req, res) => {
+  try {
+    const phone = normalizeIndianPhone(req.body.phone);
 
-  const lastMessage = messages[messages.length - 1];
-  lastMessage.parts.push({
-    inlineData: {
-      mimeType: image.mimetype,
-      data: fs.readFileSync(image.path).toString("base64"),
-    },
-  });
-}
+    const record = paymentOtps.get(phone);
+
+    const submittedHash = crypto
+      .createHash("sha256")
+      .update(String(req.body.otp || ""))
+      .digest("hex");
+
+    if (
+      !record ||
+      Date.now() > record.expiresAt ||
+      record.attempts >= 5
+    ) {
+      paymentOtps.delete(phone);
+
+      return res.status(400).json({
+        success: false,
+        error: "OTP expired. Please request a new OTP",
+      });
+    }
+
+    record.attempts++;
+
+    if (submittedHash !== record.hash) {
+      return res.status(400).json({
+        success: false,
+        error: "Incorrect OTP",
+      });
+    }
+
+    paymentOtps.delete(phone);
+
+    return res.json({
+      success: true,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: "OTP verification failed",
+    });
+  }
+});
+
+// ======================================================
+// WEATHER
+// ======================================================
 
 function isWeatherRequest(message) {
-  return /\b(weather|temperature|forecast|rain|raining|barish|baarish|mausam|mosam|मौसम|तापमान|बारिश)\b/i.test(message);
-}
-
-function isElectionRequest(message) {
-  return /\b(election|elections|vote|voting|voter|election date|when.*election|election.*kab|kab.*election|election.*hoga|hoga.*election|vote.*date|when.*vote)\b/i.test(message);
-}
-
-function isEnvironmentRequest(message) {
-  return /\b(environment|pollution|climate|global warming|save water|save earth|air pollution|water pollution|tree|trees|green energy|eco|plastic|recycling|sustainability|clean air|clean water|nature)\b/i.test(message);
-}
-
-function isGeneralKnowledgeRequest(message) {
-  return /\b(general knowledge|fact|facts|world knowledge|knowledge|who is|what is|where is|which country|capital|history|science|geography|quiz|information|learn)\b/i.test(message);
+  return /\b(weather|temperature|forecast|rain|raining|barish|baarish|mausam|mosam|मौसम|तापमान|बारिश)\b/i.test(
+    message
+  );
 }
 
 async function getJaipurWeather() {
@@ -270,147 +311,242 @@ async function getJaipurWeather() {
     "https://api.open-meteo.com/v1/forecast?latitude=26.9124&longitude=75.7873&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,rain,showers,precipitation&hourly=precipitation_probability&forecast_days=1&timezone=Asia%2FKolkata"
   );
 
-  if (!response.ok) throw new Error("Weather service unavailable");
+  if (!response.ok) {
+    throw new Error("Weather service unavailable");
+  }
+
   const data = await response.json();
+
   const current = data.current;
-  const rainProbability = Math.max(...(data.hourly?.precipitation_probability || [0]));
-  const rainExpected = rainProbability >= 40 || current.rain > 0 || current.showers > 0 || current.precipitation > 0;
-  const weatherVerdict = rainExpected || current.temperature_2m >= 40
-    ? "Overall: weather may not be ideal for outdoor plans."
-    : "Overall: weather looks suitable for outdoor plans.";
-  return `Live weather in Jaipur today: ${current.temperature_2m}°C, feels like ${current.apparent_temperature}°C, humidity ${current.relative_humidity_2m}%, wind ${current.wind_speed_10m} km/h. Rain forecast: ${rainExpected ? "Yes, rain is possible today" : "No significant rain expected today"}; maximum rain probability ${rainProbability}%; current rain ${current.rain} mm, showers ${current.showers} mm. ${weatherVerdict} For another country or city, ask with its exact name.`;
+
+  const rainProbability = Math.max(
+    ...(data.hourly?.precipitation_probability || [0])
+  );
+
+  const rainExpected =
+    rainProbability >= 40 ||
+    current.rain > 0 ||
+    current.showers > 0 ||
+    current.precipitation > 0;
+
+  return `
+Live weather in Jaipur:
+
+Temperature: ${current.temperature_2m}°C
+Feels like: ${current.apparent_temperature}°C
+Humidity: ${current.relative_humidity_2m}%
+Wind: ${current.wind_speed_10m} km/h
+Rain probability: ${rainProbability}%
+Rain expected: ${rainExpected ? "Yes" : "No"}
+`;
 }
 
-function createLocalReply(message, file, image) {
-  const text = String(message || "").trim();
-  const lowerText = text.toLowerCase();
-  const attachment = file || image;
+// ======================================================
+// CONVERT HISTORY
+// ======================================================
 
-  if (attachment && !text) {
-    if (image) {
-      const sizeInKb = Math.max(1, Math.round(image.size / 1024));
-      return `Image received: ${image.originalname}. Type: ${image.mimetype}. Size: ${sizeInKb} KB. I can analyze the image content, objects, text, colors, and visual details. Ask me what you want to know about it.`;
+function convertMessagesToGemini(messages, currentMessage) {
+  const result = [];
+
+  if (Array.isArray(messages)) {
+    for (const msg of messages) {
+      if (msg.role && msg.content) {
+        result.push({
+          role:
+            msg.role === "assistant"
+              ? "model"
+              : "user",
+
+          parts: [
+            {
+              text: String(msg.content),
+            },
+          ],
+        });
+      }
     }
-
-    const sizeInKb = Math.max(1, Math.round(file.size / 1024));
-    return `File received: ${file.originalname}. Type: ${file.mimetype || "unknown"}. Size: ${sizeInKb} KB. Tell me whether you want a summary, key points, or help extracting information from it.`;
   }
 
-  if (/^(hi|hello|hey|salam)\b/.test(lowerText)) {
-    return "Hello! How can I help you today?";
+  if (currentMessage) {
+    result.push({
+      role: "user",
+
+      parts: [
+        {
+          text: String(currentMessage),
+        },
+      ],
+    });
   }
 
-  if (/\b(thanks|thank you|shukriya)\b/.test(lowerText)) {
-    return "You're welcome! What would you like to do next?";
-  }
-
-  if (/\b(show|give|write|send|provide)\b.*\b(code|example|snippet)\b|\b(code|example|snippet)\b.*\b(react|javascript|html|css|python)\b/.test(lowerText)) {
-    return "React example:\n\nfunction Welcome({ name }) {\n  return <h1>Hello, {name}!</h1>;\n}\n\nexport default Welcome;\n\nUse it like this: <Welcome name=\"Aisha\" />. Tell me the exact feature and I can provide complete code.";
-  }
-
-  if (/\b(define|definition|what is|meaning|kya hai|explain)\b/.test(lowerText) &&
-      /\b(sql|python|node\.?js|react\.?js?|javascript|js)\b/.test(lowerText)) {
-    return "Definitions:\n\nReact.js is a JavaScript library for building user interfaces from reusable components. It lets developers create interactive web pages by updating only the parts of the screen that change.\n\nJavaScript is a programming language used to add behavior and interactivity to web pages. It also runs outside the browser, through platforms such as Node.js, to build servers and APIs.\n\nSQL (Structured Query Language) is a language used to create, read, update, and delete data in relational databases such as MySQL and PostgreSQL.\n\nPython is a high-level, easy-to-read programming language used for web development, automation, data science, AI, and scripting.\n\nNode.js is a runtime that lets developers execute JavaScript outside the browser, commonly on servers for APIs, web apps, and real-time applications.";
-  }
-
-  if (/\b(react|react\.js|jsx|component|hook|usestate|useeffect)\b/.test(lowerText)) {
-    return "React.js is a JavaScript library for building user interfaces with reusable components. Start with components, props, state, and hooks such as useState and useEffect. Keep each component focused and render lists with stable keys.";
-  }
-
-  if (/\b(javascript|js|ecmascript|node\.js|nodejs|async|promise|array|object)\b/.test(lowerText)) {
-    return "JavaScript is used for interactive web apps and backend services. Important basics include variables, functions, arrays, objects, modules, promises, async/await, and error handling. Share your code or question for a more specific explanation.";
-  }
-
-  if (/\b(cyber ?security|cybersecurity|security|ethical hacking|xss|sql injection|phishing|malware|authentication|encryption|firewall)\b/.test(lowerText)) {
-    return "Cybersecurity focuses on protecting systems, applications, and data. Use strong authentication, least-privilege access, HTTPS, input validation, parameterized queries, secure headers, dependency updates, backups, and logging. Test only systems you own or have permission to assess.";
-  }
-
-  if (/\b(software engineering|software engineer|agile|scrum|testing|debugging|api|database|system design)\b/.test(lowerText)) {
-    return "Software engineering combines requirements, design, implementation, testing, deployment, and maintenance. Good practice includes clear modules, code review, Git, automated tests, documentation, secure APIs, monitoring, and small maintainable changes.";
-  }
-
-  if (/\b(quiz|mcq|question|exam|interview question|test me)\b/.test(lowerText)) {
-    return "Quick quiz: Which React hook stores component state? A) useEffect B) useState C) useFetch D) useRoute. Reply with A, B, C, or D and I will check your answer.";
-  }
-
-  if (/\b(election|elections|vote|voting|voter|election date|when.*election|election.*kab|kab.*election|election.*hoga|hoga.*election)\b/.test(lowerText)) {
-    return "Election message to the whole world: The election date will be announced by the official election commission or government authority. Please check the official website and verified news sources for the exact schedule, voting process, and result dates. Follow only official updates before sharing any announcement.";
-  }
-
-  if (/\b(environment|pollution|climate|global warming|save water|save earth|air pollution|water pollution|tree|trees|green energy|eco|plastic|recycling|sustainability|clean air|clean water|nature)\b/.test(lowerText)) {
-    return "Environment message to everyone: Protect the environment by reducing plastic waste, saving water, planting more trees, using clean energy, and keeping air and water clean. A healthy environment is essential for all life on Earth, and every small action matters.";
-  }
-
-  if (/\b(general knowledge|fact|facts|world knowledge|knowledge|who is|what is|where is|which country|capital|history|science|geography|information|learn)\b/.test(lowerText)) {
-    return "General knowledge message: Learning is the key to understanding the world. Use trusted sources, ask questions, and keep exploring history, science, geography, technology, and current affairs to build strong knowledge and better decisions.";
-  }
-
-  if (/\b(world cup|worldcup|fifa|cricket world cup)\b/.test(lowerText)) {
-    return "Which World Cup do you mean: FIFA football or cricket, and which year? The winner depends on the sport and tournament year.";
-  }
-
-  if (/\b(build|create|make|design)\b.*\b(website|web site|webpage|landing page|portfolio)\b|\b(website|webpage|portfolio)\b.*\b(code|build|create|make)\b/.test(lowerText)) {
-    return "Here is a simple website starter:\n\nHTML:\n<h1>My Portfolio</h1>\n<p>Welcome to my website.</p>\n<button>Contact me</button>\n\nCSS:\nbody { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }\nbutton { padding: 10px 16px; background: #1769aa; color: white; border: 0; border-radius: 4px; }\n\nAdd sections for About, Skills, Projects, Experience, and Contact to complete the website.";
-  }
-
-  if (/\b(show|give|write|send|provide)\b.*\b(code|example|snippet)\b|\b(code|example|snippet)\b.*\b(react|javascript|html|css|python)\b/.test(lowerText)) {
-    return "React example:\n\nfunction Welcome({ name }) {\n  return <h1>Hello, {name}!</h1>;\n}\n\nexport default Welcome;\n\nUse it like this: <Welcome name=\"Aisha\" />. Tell me the exact feature and I can provide complete code.";
-  }
-
-  if (/\b(make|create|write|build|generate)\b.*\b(resume|cv)\b|\b(resume|cv)\b.*\b(template|format|details)\b/.test(lowerText)) {
-    return "Resume template:\n\nFULL NAME\nJob title | City | Email | Phone | LinkedIn | GitHub\n\nSUMMARY\n2-3 lines describing your experience, strongest skills, and career goal.\n\nSKILLS\nJavaScript, React.js, HTML, CSS, Node.js, Git, SQL\n\nPROJECTS\nProject name - what you built, tools used, and measurable result.\n\nEXPERIENCE\nCompany - Role - Dates\n• Achievement or responsibility with a measurable result.\n\nEDUCATION\nDegree - Institute - Year\n\nSend your name, target role, skills, projects, experience, education, email, and city to make a personalized resume.";
-  }
-
-  if (/\b(html|css|web design|frontend|front end|responsive)\b/.test(lowerText)) {
-    return "HTML defines page structure and CSS controls presentation. Use semantic HTML, reusable CSS classes, responsive layouts, accessible labels, and flexible units such as rem, %, and fr for a maintainable interface.";
-  }
-
-  if (/\b(python|django|flask|pandas|machine learning|data science)\b/.test(lowerText)) {
-    return "Python is useful for web development, automation, data science, and AI. Learn functions, collections, modules, exceptions, virtual environments, and testing before building larger projects.";
-  }
-
-  if (/\b(sql|mysql|postgres|postgresql|database|query|mongodb)\b/.test(lowerText)) {
-    return "Databases store and organize application data. For SQL, learn SELECT, INSERT, UPDATE, DELETE, JOINs, indexes, constraints, and transactions. Use parameterized queries and least-privilege database accounts for security.";
-  }
-
-  if (/\b(difference|differences|compare|comparison|difference between)\b/.test(lowerText) && /\b(sql|mongodb|python|node\.?js|javascript|react\.?js)\b/.test(lowerText)) {
-    return "Quick differences:\n\nSQL vs MongoDB: SQL is relational and stores structured data in tables with schemas and joins. MongoDB is a NoSQL document database that stores flexible JSON-like documents and is useful when data shape changes often.\n\nPython vs Node.js: Python is a programming language known for readability, automation, data science, and backend development. Node.js is a JavaScript runtime designed for running JavaScript on servers, especially for fast I/O and real-time APIs.\n\nJavaScript vs React.js: JavaScript is the programming language. React.js is a JavaScript library for building user interfaces with components, props, and state. React needs JavaScript, but JavaScript does not require React.";
-  }
-
-  if (/\b(git|github|version control|commit|branch|merge|pull request)\b/.test(lowerText)) {
-    return "Git tracks code changes. A common workflow is: create a branch, make a small commit, push it, open a pull request, review the changes, then merge. Keep commits focused and write clear messages.";
-  }
-
-  if (/\b(ai|artificial intelligence|machine learning|chatbot|neural network)\b/.test(lowerText)) {
-    return "AI systems learn patterns from data or follow programmed rules. A practical workflow is to define the goal, prepare data, choose a model, evaluate it with suitable metrics, and monitor results for errors and bias.";
-  }
-
-  if (/\b(interview|resume|cv|career|job|developer roadmap|roadmap)\b/.test(lowerText)) {
-    return "For a developer interview, prepare fundamentals, two or three projects, debugging examples, Git, testing, and clear explanations of your design choices. Practice solving problems aloud and keep your resume focused on measurable results.";
-  }
-
-  if (/\b(study|study plan|learn|education|student|homework|school|college|course)\b/.test(lowerText)) {
-    return "A simple study plan is: choose one clear goal, divide it into small topics, study in focused sessions, practice without notes, and review mistakes. Build a small project to turn theory into practical skills.";
-  }
-
-  if (/\b(math|mathematics|calculate|equation|algebra|percentage|formula)\b/.test(lowerText)) {
-    return "I can help with maths step by step. Send the complete problem, numbers, and the answer format you need, and I will explain the method clearly.";
-  }
-
-  if (/\b(translate|translation|meaning|english meaning|urdu meaning|hindi meaning)\b/.test(lowerText)) {
-    return "Sure. Send the sentence and tell me the target language, such as English, Hindi, or Urdu. I can provide a natural translation and explain difficult words.";
-  }
-
-  if (/\b(how to|help me|advice|suggestion|problem|issue|error|not working|fix)\b/.test(lowerText)) {
-    return "I can help troubleshoot it. Share what you are trying to do, the exact error or result, and the relevant code or steps. I will suggest a clear solution.";
-  }
-
-  return `I understand your message: "${text}". Please share a little more detail so I can help you better.`;
+  return result.slice(-40);
 }
 
-// ========================================
+// ======================================================
+// IMAGE / FILE -> GEMINI
+// ======================================================
+
+function addAttachmentToGeminiMessage(
+  messages,
+  attachment
+) {
+  if (!attachment) {
+    return;
+  }
+
+  if (!messages.length) {
+    return;
+  }
+
+  const lastMessage =
+    messages[messages.length - 1];
+
+  if (!lastMessage.parts) {
+    lastMessage.parts = [];
+  }
+
+  if (!fs.existsSync(attachment.path)) {
+    console.warn(
+      "Attachment not found:",
+      attachment.path
+    );
+
+    return;
+  }
+
+  const base64 = fs
+    .readFileSync(attachment.path)
+    .toString("base64");
+
+  lastMessage.parts.push({
+    inlineData: {
+      mimeType:
+        attachment.mimetype ||
+        "application/octet-stream",
+
+      data: base64,
+    },
+  });
+}
+
+// ======================================================
+// LOCAL FALLBACK
+// ======================================================
+
+function createLocalReply(
+  message,
+  file,
+  image
+) {
+  const text =
+    String(message || "").trim();
+
+  const lowerText =
+    text.toLowerCase();
+
+  // IMAGE
+  if (image) {
+    return `
+🖼️ Image received successfully.
+
+File: ${image.originalname}
+Type: ${image.mimetype}
+Size: ${Math.round(image.size / 1024)} KB
+
+Nova AI can analyze:
+• Objects
+• People
+• Colors
+• Text
+• Design
+• Visual details
+
+Ask me what you want to know about this image.
+`;
+  }
+
+  // FILE
+  if (file) {
+    return `
+📄 File received successfully.
+
+File: ${file.originalname}
+Type: ${file.mimetype || "unknown"}
+Size: ${Math.round(file.size / 1024)} KB
+
+Nova AI received your file successfully.
+You can ask me to summarize or analyze it.
+`;
+  }
+
+  // EMPTY
+  if (!text) {
+    return "Please write something for Nova AI.";
+  }
+
+  // HELLO
+  if (/^(hi|hello|hey|salam)\b/.test(lowerText)) {
+    return "Hello! 👋 I am Nova AI. How can I help you?";
+  }
+
+  // THANKS
+  if (
+    /\b(thanks|thank you|shukriya)\b/.test(
+      lowerText
+    )
+  ) {
+    return "You're welcome! 😊";
+  }
+
+  // CODE
+  if (
+    /\b(code|coding|program|javascript|react|html|css|python|node)\b/.test(
+      lowerText
+    )
+  ) {
+    return `
+I can help you with coding.
+
+You can ask me for:
+• React
+• JavaScript
+• Node.js
+• Express
+• HTML
+• CSS
+• Python
+• SQL
+• APIs
+• Responsive websites
+
+Send me your exact requirement.
+`;
+  }
+
+  // WEBSITE
+  if (
+    /\b(website|web app|landing page|portfolio)\b/.test(
+      lowerText
+    )
+  ) {
+    return `
+I can create a responsive website for you.
+
+Tell me:
+1. Website name
+2. Pages
+3. Design
+4. Features
+5. React or HTML/CSS
+`;
+  }
+
+  return `Nova AI received: "${text}"`;
+}
+
+// ======================================================
 // AI RESPONSE
-// ========================================
+// ======================================================
 
 async function generateAIResponse({
   message,
@@ -418,82 +554,217 @@ async function generateAIResponse({
   image,
   file,
 }) {
-  const userText = String(message || "").trim();
+  const userText =
+    String(message || "").trim();
 
-  if (!userText && !image && !file) {
-    return { reply: "Please write something!" };
-  }
-
-  const messageForAI = userText || "Please describe the uploaded image or file.";
-
-  let weatherContext = "";
-  if (isWeatherRequest(userText)) {
-    try {
-      weatherContext = await getJaipurWeather();
-    } catch (error) {
-      console.error("Weather Error:", error.message);
-    }
-  }
-
-  if (!hasGeminiKey) {
+  if (
+    !userText &&
+    !image &&
+    !file
+  ) {
     return {
-      reply: weatherContext
-        ? `${weatherContext}\n\n${createLocalReply(userText, file, image)}`
-        : createLocalReply(userText, file, image),
+      reply:
+        "Please write a message or upload a file.",
     };
   }
 
-  const prompt = weatherContext
-    ? `${weatherContext}\n\nAnswer the user's weather question using this live data. Mention that it is current data for Jaipur.\n\nUser message: ${messageForAI}`
-    : messageForAI;
-  const messages = convertMessagesToGemini(history, prompt);
+  let weatherContext = "";
 
-  // Add file info if provided
-  if (file) {
-    const lastMsg = messages[messages.length - 1];
-    if (lastMsg) {
-      lastMsg.parts[0].text += `\n\nFile uploaded: ${file.originalname}`;
+  // WEATHER
+  if (isWeatherRequest(userText)) {
+    try {
+      weatherContext =
+        await getJaipurWeather();
+    } catch (error) {
+      console.error(
+        "Weather error:",
+        error.message
+      );
     }
   }
 
-  addImageToGeminiMessage(messages, image);
+  // ====================================================
+  // DEMO MODE
+  // ====================================================
+
+  if (!hasGeminiKey) {
+    return {
+      reply:
+        weatherContext +
+        "\n\n" +
+        createLocalReply(
+          userText,
+          file,
+          image
+        ),
+    };
+  }
+
+  // ====================================================
+  // PROMPT
+  // ====================================================
+
+  let prompt =
+    userText ||
+    "Analyze the uploaded file or image and explain what it contains.";
+
+  if (weatherContext) {
+    prompt = `
+${weatherContext}
+
+Use this live weather information when answering.
+
+User question:
+${prompt}
+`;
+  }
+
+  const messages =
+    convertMessagesToGemini(
+      history,
+      prompt
+    );
+
+  // ====================================================
+  // ATTACH IMAGE
+  // ====================================================
+
+  if (image) {
+    addAttachmentToGeminiMessage(
+      messages,
+      image
+    );
+  }
+
+  // ====================================================
+  // ATTACH FILE
+  // ====================================================
+
+  if (file) {
+    addAttachmentToGeminiMessage(
+      messages,
+      file
+    );
+  }
+
+  // ====================================================
+  // GEMINI REQUEST
+  // ====================================================
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(
+        process.env.GEMINI_API_KEY
+      )}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
         body: JSON.stringify({
           systemInstruction: {
-            parts: [{ text: "You are Nova AI, a helpful and accurate assistant. Answer every user message naturally and clearly. Use the provided live weather data when available. When an image is attached, inspect it carefully and include its image type or format, a concise description of what is visible, notable objects, readable text, colors, and any uncertainty. If the user asks about the image, answer that question directly. When only a file is attached, identify its file type and explain what information you can help extract." }],
+            parts: [
+              {
+                text: `
+You are Nova AI.
+
+You are NOT ChatGPT.
+
+Answer naturally and helpfully.
+
+If the user writes Hindi or Hinglish,
+reply in Hindi/Hinglish.
+
+If the user writes English,
+reply in English.
+
+If an image is uploaded:
+- analyze the image
+- describe visible content
+- identify objects
+- read visible text when possible
+- explain colors/design
+- answer the user's question about it
+
+If a file is uploaded:
+- identify the file type
+- analyze its contents when supported
+- summarize it when requested
+- answer questions based on the uploaded content
+
+Never pretend that an uploaded file was analyzed if it could not be read.
+`,
+              },
+            ],
           },
+
           contents: messages,
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },
+
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2000,
+          },
         }),
       }
     );
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || "Gemini request failed");
-    const reply = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
-    if (!reply) throw new Error("Gemini returned an empty response");
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
+      console.error(
+        "Gemini API error:",
+        data
+      );
+
+      throw new Error(
+        data.error?.message ||
+          "Gemini request failed"
+      );
+    }
+
+    const reply =
+      data.candidates?.[0]?.content?.parts
+        ?.map(
+          (part) =>
+            part.text || ""
+        )
+        .join("")
+        .trim();
+
+    if (!reply) {
+      throw new Error(
+        "Gemini returned empty response"
+      );
+    }
 
     return {
       reply,
     };
   } catch (error) {
-    console.error("Gemini Error:", error.message);
+    console.error(
+      "❌ GEMINI ERROR:",
+      error.message
+    );
+
     return {
-      reply: weatherContext
-        ? `${weatherContext}\n\n${createLocalReply(userText, file, image)}`
-        : createLocalReply(userText, file, image),
+      reply:
+        `Nova AI could not process the AI request right now.\n\n` +
+        createLocalReply(
+          userText,
+          file,
+          image
+        ),
     };
-  } 
+  }
 }
 
-// ========================================
+// ======================================================
 // CHAT API
-// ========================================
+// ======================================================
 
 app.post(
   "/api/chat",
@@ -519,42 +790,55 @@ app.post(
 
       try {
         history = req.body.history
-          ? JSON.parse(req.body.history)
+          ? JSON.parse(
+              req.body.history
+            )
           : [];
-      } catch (error) {
+      } catch {
         history = [];
       }
 
       const image =
-        req.files?.image?.[0] || null;
+        req.files?.image?.[0] ||
+        null;
 
       const file =
-        req.files?.file?.[0] || null;
+        req.files?.file?.[0] ||
+        null;
 
       console.log("");
       console.log(
-        "================================="
+        "===================================="
+      );
+      console.log(
+        "📩 NOVA AI REQUEST"
+      );
+      console.log(
+        "===================================="
       );
 
-      console.log("📩 USER:", message);
+      console.log(
+        "Message:",
+        message
+      );
 
       if (image) {
         console.log(
-          "🖼️ IMAGE:",
+          "🖼️ Image:",
           image.originalname
         );
       }
 
       if (file) {
         console.log(
-          "📎 FILE:",
+          "📄 File:",
           file.originalname
         );
       }
 
-      // ====================================
+      // =================================================
       // AI
-      // ====================================
+      // =================================================
 
       const ai =
         await generateAIResponse({
@@ -564,41 +848,57 @@ app.post(
           file,
         });
 
-      // ====================================
+      // =================================================
       // IMAGE RESPONSE
-      // ====================================
+      // =================================================
 
       let imageData = null;
 
       if (image) {
         imageData = {
-          name: image.originalname,
+          name:
+            image.originalname,
+
+          type:
+            image.mimetype,
+
+          size:
+            image.size,
 
           url:
-            `${req.protocol}://${req.get("host")}/uploads/` +
-            image.filename,
+            `${req.protocol}://${req.get(
+              "host"
+            )}/uploads/${image.filename}`,
         };
       }
 
-      // ====================================
+      // =================================================
       // FILE RESPONSE
-      // ====================================
+      // =================================================
 
       let fileData = null;
 
       if (file) {
         fileData = {
-          name: file.originalname,
+          name:
+            file.originalname,
+
+          type:
+            file.mimetype,
+
+          size:
+            file.size,
 
           url:
-            `${req.protocol}://${req.get("host")}/uploads/` +
-            file.filename,
+            `${req.protocol}://${req.get(
+              "host"
+            )}/uploads/${file.filename}`,
         };
       }
 
-      // ====================================
+      // =================================================
       // RESPONSE
-      // ====================================
+      // =================================================
 
       return res.status(200).json({
         success: true,
@@ -621,7 +921,7 @@ app.post(
         success: false,
 
         reply:
-          "Sorry 😔 I couldn't process your request.",
+          "Nova AI could not process your request.",
 
         error:
           error.message,
@@ -630,65 +930,118 @@ app.post(
   }
 );
 
-// ========================================
+// ======================================================
 // 404
-// ========================================
+// ======================================================
 
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: "Route not found",
-    route: req.originalUrl,
-  });
-});
+app.use(
+  (req, res) => {
+    res.status(404).json({
+      success: false,
+      error: "Route not found",
+      route: req.originalUrl,
+    });
+  }
+);
 
-// ========================================
-// SERVER
-// ========================================
+// ======================================================
+// ERROR HANDLER
+// ======================================================
 
-function startServer(port) {
-  const server = app.listen(port, () => {
+app.use(
+  (error, req, res, next) => {
+    console.error(
+      "❌ SERVER ERROR:",
+      error
+    );
+
+    if (
+      error instanceof multer.MulterError
+    ) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "File upload error: " +
+          error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error:
+        error.message ||
+        "Internal server error",
+    });
+  }
+);
+
+// ======================================================
+// START SERVER
+// ======================================================
+
+const server = app.listen(
+  PORT,
+  () => {
     console.log("");
     console.log(
-      "================================="
+      "=========================================="
     );
     console.log(
       "🚀 NOVA AI BACKEND STARTED"
     );
     console.log(
-      "================================="
+      "=========================================="
     );
     console.log(
-      `🌐 http://localhost:${port}`
+      `🌐 http://localhost:${PORT}`
     );
     console.log(
-      `🧪 http://localhost:${port}/api/test`
+      `🧪 http://localhost:${PORT}/api/test`
     );
     console.log(
-      `💬 http://localhost:${port}/api/chat`
+      `💬 http://localhost:${PORT}/api/chat`
     );
     console.log(
-      "================================="
+      `📁 http://localhost:${PORT}/uploads`
+    );
+    console.log(
+      "=========================================="
     );
     console.log("");
-  });
+  }
+);
 
-  server.on("error", (error) => {
-    if (error.code === "EADDRINUSE") {
-      console.warn(
-        `⚠️ Port ${port} is busy. Retrying on ${port + 1}...`
+server.on(
+  "error",
+  (error) => {
+    console.error("");
+    console.error(
+      "❌ SERVER ERROR"
+    );
+    console.error(
+      "=========================================="
+    );
+
+    if (
+      error.code === "EADDRINUSE"
+    ) {
+      console.error(
+        `❌ Port ${PORT} is already being used.`
       );
-      startServer(port + 1);
-      return;
+
+      console.error(
+        `Close the other Node server or change PORT.`
+      );
+    } else {
+      console.error(
+        error
+      );
     }
 
-    console.error("Server error:", error);
-    process.exit(1);
-  });
-}
-
-if (require.main === module) {
-  startServer(PORT);
-}
+    console.error(
+      "=========================================="
+    );
+  }
+);
 
 module.exports = app;
