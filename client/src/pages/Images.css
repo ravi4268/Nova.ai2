@@ -1,7 +1,3 @@
-/* =====================================================
-   NOVA AI - IMAGES PAGE
-===================================================== */
-
 * {
   box-sizing: border-box;
 }
@@ -10,22 +6,18 @@
   width: 100%;
   min-height: 100vh;
   padding: 20px 30px 60px;
-  background: #070a0f;
-  color: #ffffff;
   overflow-x: hidden;
+  background: #070a0f;
+  color: #fff;
 }
 
-
-/* =====================================================
-   HEADER
-===================================================== */
-
+/* Header */
 .images-header {
-  width: 100%;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
+  width: 100%;
   margin-bottom: 42px;
 }
 
@@ -44,41 +36,36 @@
 }
 
 .image-ai-badge {
+  display: flex;
   min-width: 150px;
   height: 56px;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
   padding: 0 22px;
   border: 1px solid #344154;
   border-radius: 32px;
   background: #172031;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 11px;
   color: #bcaaff;
   font-size: 18px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
 }
 
-
-/* =====================================================
-   GENERATOR
-===================================================== */
-
+/* Generator */
 .image-generator {
   width: 100%;
   margin-bottom: 0;
 }
 
 .image-prompt-wrapper {
+  display: flex;
   width: 100%;
   min-height: 106px;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 14px 14px 24px;
   border: 1px solid #303b4d;
   border-radius: 28px;
   background: #11161e;
-  display: flex;
-  align-items: center;
-  padding: 14px 14px 14px 24px;
-  gap: 16px;
   transition: 0.2s ease;
 }
 
@@ -87,25 +74,30 @@
   box-shadow: 0 0 0 3px rgba(88, 110, 145, 0.08);
 }
 
+.image-attach,
+.image-mic {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: #c6ccd8;
+  cursor: pointer;
+}
+
 .image-attach {
   width: 40px;
   height: 48px;
-  border: none;
-  background: transparent;
   color: #aeb8c8;
   font-size: 27px;
-  cursor: pointer;
-  flex-shrink: 0;
 }
 
 .image-prompt-wrapper input[type="text"] {
   flex: 1;
   min-width: 0;
   height: 65px;
-  border: none;
-  outline: none;
+  border: 0;
+  outline: 0;
   background: transparent;
-  color: #ffffff;
+  color: #fff;
   font-size: 25px;
 }
 
@@ -117,12 +109,7 @@
 .image-mic {
   width: 48px;
   height: 48px;
-  border: none;
-  background: transparent;
-  color: #c6ccd8;
   font-size: 25px;
-  cursor: pointer;
-  flex-shrink: 0;
 }
 
 .image-mic.listening {
@@ -136,29 +123,29 @@
 }
 
 .generate-image-button {
+  display: flex;
   width: 74px;
   height: 74px;
-  border: none;
-  border-radius: 50%;
-  background: #b4b7bf;
-  color: white;
-  font-size: 38px;
-  cursor: pointer;
-  display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: #b4b7bf;
+  color: #fff;
+  font-size: 38px;
+  cursor: pointer;
   transition: 0.2s ease;
-  flex-shrink: 0;
 }
 
 .generate-image-button:hover {
-  background: #d1d4db;
   transform: scale(1.03);
+  background: #d1d4db;
 }
 
 .generate-image-button:disabled {
-  opacity: 0.65;
   cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .image-prompt-note {
@@ -168,39 +155,42 @@
   font-size: 16px;
 }
 
-
-/* =====================================================
-   ATTACHED IMAGE
-===================================================== */
-
+/* Uploaded image preview card */
 .attached-image {
+  position: relative;
+  display: flex;
   width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
   margin-bottom: 12px;
-  padding: 10px 14px;
+  padding: 16px;
   border: 1px solid #303b4d;
   border-radius: 18px;
   background: #10151d;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
 .attached-left {
   display: flex;
-  align-items: center;
-  gap: 12px;
   min-width: 0;
+  width: 100%;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 48px;
 }
 
 .attached-left img {
-  width: 52px;
-  height: 52px;
+  display: block;
+  width: min(100%, 480px);
+  height: 280px;
   border-radius: 12px;
-  object-fit: cover;
+  background: #080b10;
+  object-fit: contain;
 }
 
 .attached-left div {
   min-width: 0;
+  width: 100%;
 }
 
 .attached-left strong,
@@ -212,56 +202,55 @@
 }
 
 .attached-left strong {
-  color: #ffffff;
-  font-size: 14px;
   max-width: 350px;
+  color: #fff;
+  font-size: 14px;
 }
 
 .attached-left small {
-  color: #8195b1;
   margin-top: 4px;
+  color: #8195b1;
 }
 
 .attached-image > button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
   width: 38px;
   height: 38px;
-  border: none;
+  border: 0;
   border-radius: 50%;
   background: #252d39;
-  color: white;
+  color: #fff;
   font-size: 24px;
   cursor: pointer;
 }
 
-
-/* =====================================================
-   LOADING
-===================================================== */
-
+/* Loading */
 .image-loading {
   margin-top: 38px;
   padding: 45px 20px;
-  text-align: center;
   border: 1px solid #283344;
   border-radius: 24px;
   background: #10151d;
+  text-align: center;
 }
 
 .loading-spinner {
+  display: flex;
   width: 65px;
   height: 65px;
+  align-items: center;
+  justify-content: center;
   margin: 0 auto 18px;
   border-radius: 50%;
   background: #1a2434;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 30px;
   animation: novaSpin 1.2s linear infinite;
 }
 
 @keyframes novaSpin {
-  100% {
+  to {
     transform: rotate(360deg);
   }
 }
@@ -276,19 +265,15 @@
   color: #8298b6;
 }
 
-
-/* =====================================================
-   GENERATED IMAGE
-===================================================== */
-
+/* Generated image */
 .generated-section {
   margin-top: 45px;
 }
 
 .generated-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 20px;
   margin-bottom: 20px;
 }
@@ -308,9 +293,9 @@
   border: 1px solid #354257;
   border-radius: 14px;
   background: #182131;
-  color: #ffffff;
-  cursor: pointer;
+  color: #fff;
   font-size: 15px;
+  cursor: pointer;
 }
 
 .download-image:hover {
@@ -323,16 +308,16 @@
   max-width: 900px;
   margin: auto;
   overflow: hidden;
-  border-radius: 24px;
   border: 1px solid #303b4c;
+  border-radius: 24px;
   background: #10151d;
 }
 
 .generated-image-card img {
-  width: 100%;
   display: block;
-  max-height: 650px;
-  object-fit: cover;
+  width: 100%;
+  max-height: 75vh;
+  object-fit: contain;
 }
 
 .generated-overlay {
@@ -342,15 +327,11 @@
   padding: 9px 14px;
   border-radius: 20px;
   background: rgba(5, 8, 13, 0.72);
+  color: #fff;
   backdrop-filter: blur(8px);
-  color: #ffffff;
 }
 
-
-/* =====================================================
-   CREATE SECTION
-===================================================== */
-
+/* Suggestions */
 .create-section {
   margin-top: 108px;
 }
@@ -376,71 +357,61 @@
 .image-arrows button {
   width: 74px;
   height: 74px;
-  border-radius: 50%;
   border: 1px solid #344052;
+  border-radius: 50%;
   background: #111821;
-  color: white;
+  color: #fff;
   font-size: 40px;
   line-height: 1;
   cursor: pointer;
-  transition: 0.2s ease;
 }
 
 .image-arrows button:hover {
-  background: #1d2735;
   border-color: #53647d;
+  background: #1d2735;
 }
 
-
-/* =====================================================
-   HORIZONTAL IMAGE SCROLL
-===================================================== */
-
 .image-suggestions {
-  width: 100%;
   display: flex;
+  width: 100%;
   gap: 25px;
   overflow-x: auto;
   overflow-y: hidden;
+  padding-bottom: 18px;
   scroll-behavior: smooth;
   scroll-snap-type: x mandatory;
-  padding: 0 0 18px;
-  scrollbar-width: thin;
   scrollbar-color: #364255 transparent;
+  scrollbar-width: thin;
 }
 
 .image-suggestions::-webkit-scrollbar {
   height: 8px;
 }
 
-.image-suggestions::-webkit-scrollbar-track {
-  background: transparent;
-}
-
 .image-suggestions::-webkit-scrollbar-thumb {
-  background: #364255;
   border-radius: 20px;
+  background: #364255;
 }
 
 .image-card {
   position: relative;
-  min-width: 278px;
   width: 278px;
+  min-width: 278px;
   height: 360px;
-  padding: 0;
-  border: none;
-  border-radius: 24px;
+  flex-shrink: 0;
   overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 24px;
   background: #11161e;
   cursor: pointer;
-  flex-shrink: 0;
   scroll-snap-align: start;
 }
 
 .image-card img {
+  display: block;
   width: 100%;
   height: 100%;
-  display: block;
   object-fit: cover;
   transition: transform 0.35s ease;
 }
@@ -450,27 +421,23 @@
 }
 
 .image-card::after {
-  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.78),
-    transparent 45%
-  );
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.78), transparent 45%);
+  content: "";
   pointer-events: none;
 }
 
 .image-card-overlay {
   position: absolute;
   z-index: 2;
-  left: 18px;
   right: 18px;
   bottom: 17px;
+  left: 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: white;
+  color: #fff;
 }
 
 .image-card-overlay span {
@@ -479,48 +446,44 @@
 }
 
 .image-card-overlay small {
+  display: flex;
   width: 32px;
   height: 32px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.14);
-  display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
 }
 
-
-/* =====================================================
-   FEATURES
-===================================================== */
-
+/* Features */
 .image-features {
-  margin-top: 80px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
+  margin-top: 80px;
 }
 
 .image-feature {
+  display: flex;
   min-height: 130px;
+  align-items: flex-start;
+  gap: 18px;
   padding: 25px;
   border: 1px solid #283342;
   border-radius: 22px;
   background: #0e131a;
-  display: flex;
-  align-items: flex-start;
-  gap: 18px;
 }
 
 .feature-icon {
+  display: flex;
   width: 48px;
   height: 48px;
-  border-radius: 15px;
-  background: #192333;
-  display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  border-radius: 15px;
+  background: #192333;
   font-size: 22px;
-  flex-shrink: 0;
 }
 
 .image-feature strong {
@@ -535,13 +498,8 @@
   line-height: 1.5;
 }
 
-
-/* =====================================================
-   TABLET
-===================================================== */
-
+/* Tablet */
 @media (max-width: 900px) {
-
   .images-page {
     padding: 20px 20px 50px;
   }
@@ -570,8 +528,8 @@
   }
 
   .image-card {
-    min-width: 245px;
     width: 245px;
+    min-width: 245px;
     height: 325px;
   }
 
@@ -580,20 +538,15 @@
   }
 }
 
-
-/* =====================================================
-   MOBILE
-===================================================== */
-
+/* Mobile */
 @media (max-width: 600px) {
-
   .images-page {
     padding: 18px 14px 45px;
   }
 
   .images-header {
-    margin-bottom: 30px;
     align-items: center;
+    margin-bottom: 30px;
   }
 
   .images-heading h1 {
@@ -616,8 +569,8 @@
 
   .image-prompt-wrapper {
     min-height: 72px;
-    padding: 8px 8px 8px 12px;
     gap: 5px;
+    padding: 8px 8px 8px 12px;
     border-radius: 20px;
   }
 
@@ -643,8 +596,21 @@
   }
 
   .image-prompt-note {
-    font-size: 13px;
     margin-top: 12px;
+    font-size: 13px;
+  }
+
+  .attached-image {
+    padding: 12px;
+  }
+
+  .attached-left {
+    padding-right: 38px;
+  }
+
+  .attached-left img {
+    width: 100%;
+    height: 220px;
   }
 
   .create-section {
@@ -675,16 +641,16 @@
   }
 
   .image-card {
-    min-width: 225px;
     width: 225px;
+    min-width: 225px;
     height: 295px;
     border-radius: 19px;
   }
 
   .image-card-overlay {
-    left: 14px;
     right: 14px;
     bottom: 13px;
+    left: 14px;
   }
 
   .image-card-overlay span {
@@ -713,13 +679,8 @@
   }
 }
 
-
-/* =====================================================
-   SMALL MOBILE
-===================================================== */
-
+/* Small mobile */
 @media (max-width: 380px) {
-
   .images-heading h1 {
     font-size: 32px;
   }
@@ -737,8 +698,8 @@
   }
 
   .image-card {
-    min-width: 205px;
     width: 205px;
+    min-width: 205px;
     height: 275px;
   }
 }

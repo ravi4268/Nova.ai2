@@ -1,874 +1,303 @@
-import React, { useEffect, useRef, useState } from "react";
-import "./ChatPage.css";
+import React, { useState, useRef, useEffect } from "react";
 
-const API_URL =
-  process.env.REACT_APP_API_URL ||
-  (process.env.NODE_ENV === "production"
-    ? ""
-    : "http://localhost:5001");
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5001";
 
 function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [image, setImage] = useState(null);
-  const [file, setFile] = useState(null);
-
-  const [backendError, setBackendError] = useState("");
-
-  const [aiAssistant, setAiAssistant] = useState(() => {
-    return localStorage.getItem("novaAIAssistant") !== "false";
-  });
-
-  const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
-  const imageInputRef = useRef(null);
-  const fileInputRef = useRef(null);
-
-  // =====================================================
-  // LOAD CHAT
-  // =====================================================
+  const bottomRef = useRef(null);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("novaMessages");
-
-      if (saved) {
-        const parsed = JSON.parse(saved);
-
-        if (Array.isArray(parsed)) {
-          setMessages(parsed);
-        }
-      }
-    } catch (error) {
-      console.error("Chat load error:", error);
-    }
-  }, []);
-
-  // =====================================================
-  // SAVE CHAT
-  // =====================================================
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        "novaMessages",
-        JSON.stringify(messages)
-      );
-    } catch (error) {
-      console.error("Chat save error:", error);
-    }
-  }, [messages]);
-
-  // =====================================================
-  // AI SETTING
-  // =====================================================
-
-  useEffect(() => {
-    const handleAISetting = (event) => {
-      const enabled = event.detail?.enabled;
-
-      if (typeof enabled !== "boolean") return;
-
-      setAiAssistant(enabled);
-
-      if (!enabled) {
-        setInput("");
-        setImage(null);
-        setFile(null);
-        setBackendError("");
-
-        if (imageInputRef.current) {
-          imageInputRef.current.value = "";
-        }
-
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-      }
-    };
-
-    window.addEventListener(
-      "nova-ai-setting",
-      handleAISetting
-    );
-
-    return () => {
-      window.removeEventListener(
-        "nova-ai-setting",
-        handleAISetting
-      );
-    };
-  }, []);
-
-  // =====================================================
-  // SCROLL
-  // =====================================================
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
-  }, [messages, loading]);
-
-  // =====================================================
-  // AI CHECK
-  // =====================================================
-
-  const isAIEnabled = () => {
-    return localStorage.getItem("novaAIAssistant") !== "false";
-  };
-
-  // =====================================================
-  // SEND
-  // =====================================================
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
 
   const sendMessage = async () => {
-    if (!isAIEnabled()) {
-      setAiAssistant(false);
+    const text = input.trim();
+    if (!text || isLoading) return;
 
-      window.alert(
-        "AI Assistant is OFF.\n\nPlease enable it from Settings."
-      );
-
-      return;
-    }
-
-    if (loading) return;
-
-    if (!input.trim() && !image && !file) {
-      return;
-    }
-
-    setLoading(true);
-    setBackendError("");
-
-    const userText =
-      input.trim() ||
-      (image
-        ? "Convert this uploaded image into a high-quality AI enhanced image."
-        : file
-        ? `Please analyze this file: ${file.name}`
-        : "");
-
-    const userId = Date.now();
-    const aiId = userId + 1;
-
-    // ---------------------------------------------
-    // USER IMAGE PREVIEW
-    // ---------------------------------------------
-
-    let localImageUrl = null;
-
-    if (image) {
-      localImageUrl = URL.createObjectURL(image);
-    }
-
-    const userMessage = {
-      id: userId,
-      role: "user",
-      content: userText,
-      image: localImageUrl,
-      file: file ? file.name : null,
-    };
-
-    // ---------------------------------------------
-    // AI THINKING
-    // ---------------------------------------------
-
-    const thinkingMessage = {
-      id: aiId,
-      role: "assistant",
-      content: "Nova AI is processing...",
-      loading: true,
-    };
-
-    setMessages((prev) => [
-      ...prev,
-      userMessage,
-      thinkingMessage,
-    ]);
-
+    setError("");
     setInput("");
 
+    const userMessage = { sender: "user", text };
+    setMessages((prev) => [...prev, userMessage]);
+
+    setIsLoading(true);
+
     try {
-      // ---------------------------------------------
-      // FORM DATA
-      // ---------------------------------------------
-
-      const formData = new FormData();
-
-      formData.append("message", userText);
-
-      formData.append(
-        "history",
-        JSON.stringify(
-          messages.slice(-20).map((item) => ({
-            role: item.role,
-            content: item.content,
-          }))
-        )
-      );
-
-      if (image) {
-        formData.append("image", image);
-      }
-
-      if (file) {
-        formData.append("file", file);
-      }
-
-      // ---------------------------------------------
-      // API
-      // ---------------------------------------------
-
-      const response = await fetch(
-        `${API_URL}/api/chat`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      let data;
-
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error(
-          "Backend returned an invalid response."
-        );
-      }
+      const response = await fetch(`${API_URL}/api/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: text }),
+      });
 
       if (!response.ok) {
-        throw new Error(
-          data.error ||
-            `Backend error: ${response.status}`
-        );
+        throw new Error("Backend not connected");
       }
 
-      if (!data.success) {
-        throw new Error(
-          data.error ||
-            "Nova AI request failed."
-        );
+      const data = await response.json();
+
+      if (data?.reply) {
+        setMessages((prev) => [
+          ...prev,
+          { sender: "bot", text: data.reply },
+        ]);
       }
-
-      // ---------------------------------------------
-      // AI RESULT
-      // ---------------------------------------------
-
-      setMessages((prev) =>
-        prev.map((item) =>
-          item.id === aiId
-            ? {
-                ...item,
-                loading: false,
-                content:
-                  data.reply ||
-                  "Nova AI completed the request.",
-                generatedImage:
-                  data.generatedImage?.url || null,
-                generatedImageName:
-                  data.generatedImage?.name || null,
-              }
-            : item
-        )
-      );
-    } catch (error) {
-      console.error("NOVA AI ERROR:", error);
-
-      const errorText =
-        error?.message ||
-        "Failed to connect to Nova AI.";
-
-      setBackendError(errorText);
-
-      setMessages((prev) =>
-        prev.map((item) =>
-          item.id === aiId
-            ? {
-                ...item,
-                loading: false,
-                content: `⚠️ ${errorText}`,
-              }
-            : item
-        )
-      );
+    } catch {
+      setError("AI connection failed. Make sure backend is running on port 5001.");
     } finally {
-      setLoading(false);
-
-      setImage(null);
-      setFile(null);
-
-      if (imageInputRef.current) {
-        imageInputRef.current.value = "";
-      }
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
+      setIsLoading(false);
     }
   };
 
-  // =====================================================
-  // ENTER
-  // =====================================================
-
-  const handleKeyDown = (e) => {
-    if (
-      e.key === "Enter" &&
-      !e.shiftKey
-    ) {
-      e.preventDefault();
-
-      if (!isAIEnabled()) {
-        window.alert(
-          "AI Assistant is OFF.\n\nPlease enable it from Settings."
-        );
-
-        return;
-      }
-
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
       sendMessage();
     }
   };
 
-  // =====================================================
-  // SUGGESTION
-  // =====================================================
-
-  const useSuggestion = (text) => {
-    if (!isAIEnabled()) {
-      window.alert(
-        "AI Assistant is OFF.\n\nPlease enable it from Settings."
-      );
-
-      return;
-    }
-
-    setInput(text);
-
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 100);
-  };
-
-  // =====================================================
-  // IMAGE
-  // =====================================================
-
-  const handleImage = (e) => {
-    if (!isAIEnabled()) {
-      e.target.value = "";
-
-      window.alert(
-        "AI Assistant is OFF.\n\nPlease enable it from Settings."
-      );
-
-      return;
-    }
-
-    const selected = e.target.files?.[0];
-
-    if (!selected) return;
-
-    if (!selected.type.startsWith("image/")) {
-      window.alert("Please select an image file.");
-      return;
-    }
-
-    if (selected.size > 20 * 1024 * 1024) {
-      window.alert(
-        "Image size must be less than 20 MB."
-      );
-      return;
-    }
-
-    setImage(selected);
-    setBackendError("");
-  };
-
-  // =====================================================
-  // FILE
-  // =====================================================
-
-  const handleFile = (e) => {
-    if (!isAIEnabled()) {
-      e.target.value = "";
-
-      window.alert(
-        "AI Assistant is OFF.\n\nPlease enable it from Settings."
-      );
-
-      return;
-    }
-
-    const selected = e.target.files?.[0];
-
-    if (!selected) return;
-
-    if (selected.size > 20 * 1024 * 1024) {
-      window.alert(
-        "File size must be less than 20 MB."
-      );
-      return;
-    }
-
-    setFile(selected);
-    setBackendError("");
-  };
-
-  // =====================================================
-  // REMOVE
-  // =====================================================
-
-  const removeImage = () => {
-    setImage(null);
-
-    if (imageInputRef.current) {
-      imageInputRef.current.value = "";
-    }
-  };
-
-  const removeFile = () => {
-    setFile(null);
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  // =====================================================
-  // CLEAR
-  // =====================================================
-
-  const clearChat = () => {
-    setMessages([]);
-    setInput("");
-    setImage(null);
-    setFile(null);
-    setBackendError("");
-
-    localStorage.removeItem("novaMessages");
-
-    if (imageInputRef.current) {
-      imageInputRef.current.value = "";
-    }
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 100);
-  };
-
-  const hasMessages = messages.length > 0;
-
-  // =====================================================
-  // UI
-  // =====================================================
-
   return (
-    <div className="nova-page">
-      <div className="nova-chat">
+    <div style={styles.page}>
+      <div style={styles.banner}>
+        AI connection failed. Make sure backend is running on port 5001.
+      </div>
 
-        {!aiAssistant && (
-          <div className="ai-disabled-banner">
-            ⚠️ AI Assistant is OFF — turn it ON from Settings.
+      <div style={styles.container}>
+        <div style={styles.header}>
+          <div style={styles.botIcon}>✦</div>
+          <div>
+            <h2 style={styles.title}>How can I help you?</h2>
+            <p style={styles.subtitle}>Ask Nova AI anything</p>
           </div>
-        )}
+        </div>
 
-        <main className="nova-messages">
+        <div style={styles.chatBox}>
+          {messages.length === 0 && !error && (
+            <div style={styles.emptyHint}>Start by typing a message</div>
+          )}
 
-          {!hasMessages ? (
-            <div className="welcome-screen">
+          {messages.map((msg, index) => (
+            <div
+              key={`${msg.sender}-${index}`}
+              style={{
+                ...styles.messageRow,
+                justifyContent: msg.sender === "user" ? "flex-end" : "flex-start",
+              }}
+            >
+              {msg.sender === "bot" && <div style={styles.avatar}>✦</div>}
 
-              <div className="welcome-top">
-                <div className="welcome-icon">
-                  ✦
-                </div>
-
-                <div>
-                  <h1>How can I help you?</h1>
-                  <p>Ask Nova AI anything</p>
-                </div>
+              <div
+                style={{
+                  ...styles.messageBubble,
+                  ...(msg.sender === "user"
+                    ? styles.userBubble
+                    : styles.botBubble),
+                }}
+              >
+                {msg.text}
               </div>
 
-              <div className="welcome-center">
-
-                <div className="big-stars">
-                  ✨
-                </div>
-
-                <h2>
-                  Welcome to Nova AI
-                </h2>
-
-                <p>
-                  Your intelligent AI assistant is ready to help you.
-                </p>
-
-                {aiAssistant && (
-                  <div className="suggestions">
-
-                    <button
-                      onClick={() =>
-                        useSuggestion(
-                          "Explain JavaScript in simple words"
-                        )
-                      }
-                    >
-                      💡 Explain JavaScript
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        useSuggestion(
-                          "Create a React website for me"
-                        )
-                      }
-                    >
-                      ⚛️ Create React Website
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        useSuggestion(
-                          "Give me some project ideas"
-                        )
-                      }
-                    >
-                      🚀 Project Ideas
-                    </button>
-
-                  </div>
-                )}
-
-                {!aiAssistant && (
-                  <div className="welcome-disabled">
-                    ⚠️ AI Assistant is OFF.
-                    <br />
-                    Enable it from Settings.
-                  </div>
-                )}
-
-              </div>
+              {msg.sender === "user" && <div style={styles.avatarUser}>U</div>}
             </div>
-          ) : (
-            <div className="conversation">
+          ))}
 
-              <div className="conversation-header">
-                <span>Nova AI</span>
-
-                <button
-                  type="button"
-                  onClick={clearChat}
-                >
-                  🗑 Clear Chat
-                </button>
-              </div>
-
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`chat-row ${message.role}`}
-                >
-
-                  {message.role === "assistant" && (
-                    <div className="avatar ai-avatar">
-                      ✦
-                    </div>
-                  )}
-
-                  <div
-                    className={`chat-message ${message.role}`}
-                  >
-
-                    <div className="message-author">
-                      {message.role === "assistant"
-                        ? "Nova AI"
-                        : "You"}
-                    </div>
-
-                    <div className="message-content">
-                      {message.content}
-                    </div>
-
-                    {/* USER IMAGE */}
-                    {message.image && (
-                      <div className="uploaded-result-card">
-
-                        <img
-                          src={message.image}
-                          alt="Uploaded"
-                          className="message-image"
-                        />
-
-                        <div className="image-label">
-                          Uploaded image
-                        </div>
-
-                      </div>
-                    )}
-
-                    {/* AI GENERATED IMAGE */}
-                    {message.generatedImage && (
-                      <div className="ai-generated-card">
-
-                        <div className="generated-title">
-                          ✨ AI Generated Image
-                        </div>
-
-                        <img
-                          src={message.generatedImage}
-                          alt="AI generated"
-                          className="generated-image"
-                        />
-
-                        <a
-                          href={message.generatedImage}
-                          download={
-                            message.generatedImageName ||
-                            "nova-ai-image.png"
-                          }
-                          className="download-image-button"
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          ⬇ Download Image
-                        </a>
-
-                      </div>
-                    )}
-
-                    {message.file && (
-                      <div className="message-file">
-                        📎 {message.file}
-                      </div>
-                    )}
-
-                  </div>
-
-                  {message.role === "user" && (
-                    <div className="avatar user-avatar">
-                      U
-                    </div>
-                  )}
-
-                </div>
-              ))}
-
-              {loading && (
-                <div className="chat-row assistant">
-
-                  <div className="avatar ai-avatar">
-                    ✦
-                  </div>
-
-                  <div className="chat-message assistant">
-
-                    <div className="message-author">
-                      Nova AI
-                    </div>
-
-                    <div className="typing-area">
-                      <span />
-                      <span />
-                      <span />
-                      <small>
-                        Creating your AI image...
-                      </small>
-                    </div>
-
-                  </div>
-
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
-
+          {error && (
+            <div style={styles.errorBox}>
+              <span style={styles.warning}>⚠</span> {error}
             </div>
           )}
 
-        </main>
-
-        {/* INPUT */}
-        <div className="input-area">
-
-          {(image || file) && (
-            <div className="attachment-preview">
-
-              {image && (
-                <div className="image-preview">
-
-                  <img
-                    src={URL.createObjectURL(image)}
-                    alt="Preview"
-                  />
-
-                  <div className="preview-info">
-                    <strong>
-                      Image selected
-                    </strong>
-
-                    <span>
-                      {image.name}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={removeImage}
-                  >
-                    ×
-                  </button>
-
-                </div>
-              )}
-
-              {file && (
-                <div className="file-preview">
-
-                  <span>
-                    📎 {file.name}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={removeFile}
-                  >
-                    ×
-                  </button>
-
-                </div>
-              )}
-
+          {isLoading && (
+            <div style={styles.loadingRow}>
+              <div style={styles.avatar}>✦</div>
+              <div style={styles.botBubble}>Thinking...</div>
             </div>
           )}
 
-          <div
-            className={`nova-input ${
-              !aiAssistant ? "input-disabled" : ""
-            }`}
+          <div ref={bottomRef} />
+        </div>
+
+        <div style={styles.inputRow}>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message..."
+            style={styles.input}
+            disabled={isLoading}
+          />
+          <button
+            type="button"
+            onClick={sendMessage}
+            disabled={isLoading || !input.trim()}
+            style={{
+              ...styles.sendButton,
+              opacity: isLoading || !input.trim() ? 0.6 : 1,
+            }}
           >
-
-            <button
-              type="button"
-              className="attach-button"
-              onClick={() =>
-                imageInputRef.current?.click()
-              }
-              disabled={
-                loading || !aiAssistant
-              }
-              title="Upload image"
-            >
-              🖼️
-            </button>
-
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={handleImage}
-            />
-
-            <button
-              type="button"
-              className="attach-button"
-              onClick={() =>
-                fileInputRef.current?.click()
-              }
-              disabled={
-                loading || !aiAssistant
-              }
-              title="Upload file"
-            >
-              📎
-            </button>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              hidden
-              onChange={handleFile}
-            />
-
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) =>
-                setInput(e.target.value)
-              }
-              onKeyDown={handleKeyDown}
-              placeholder={
-                aiAssistant
-                  ? "Message Nova AI..."
-                  : "AI Assistant is OFF..."
-              }
-              disabled={
-                loading || !aiAssistant
-              }
-              rows="1"
-            />
-
-            <button
-              type="button"
-              className="send-button"
-              onClick={sendMessage}
-              disabled={
-                loading ||
-                !aiAssistant ||
-                (!input.trim() &&
-                  !image &&
-                  !file)
-              }
-              title="Send"
-            >
-              {loading ? "•••" : "➤"}
-            </button>
-
-          </div>
-
-          <div className="input-tools">
-            <span>🖼️ Image</span>
-            <span>📎 File</span>
-            <b>•</b>
-            <span>Enter to send</span>
-            <b>•</b>
-
-            <span
-              className={
-                aiAssistant
-                  ? "ai-online"
-                  : "ai-offline"
-              }
-            >
-              {aiAssistant
-                ? "● AI ON"
-                : "● AI OFF"}
-            </span>
-          </div>
-
-          {backendError && (
-            <div className="backend-error">
-              ⚠️ {backendError}
-            </div>
-          )}
-
+            Send
+          </button>
         </div>
       </div>
     </div>
   );
 }
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "#020b14",
+    color: "#fff",
+    fontFamily: "Segoe UI, sans-serif",
+    padding: "0",
+    margin: "0",
+  },
+  banner: {
+    background: "#7a0f1c",
+    color: "#fff",
+    fontWeight: 700,
+    padding: "14px 20px",
+    fontSize: "18px",
+    textAlign: "left",
+    borderBottom: "1px solid rgba(255,255,255,0.1)",
+  },
+  container: {
+    maxWidth: "1200px",
+    margin: "0 auto",
+    padding: "32px 20px 40px",
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "28px",
+  },
+  botIcon: {
+    width: "52px",
+    height: "52px",
+    borderRadius: "14px",
+    background: "#2c2f38",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "28px",
+  },
+  title: {
+    margin: 0,
+    fontSize: "32px",
+    fontWeight: 800,
+  },
+  subtitle: {
+    margin: "8px 0 0",
+    color: "#9aa4b2",
+    fontSize: "18px",
+  },
+  chatBox: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "18px",
+    paddingTop: "10px",
+  },
+  messageRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+  },
+  avatar: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "50%",
+    background: "#4a3ec8",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "18px",
+    fontWeight: "700",
+  },
+  avatarUser: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "50%",
+    background: "#2b2f36",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "18px",
+    fontWeight: "700",
+  },
+  messageBubble: {
+    maxWidth: "70%",
+    padding: "18px 20px",
+    borderRadius: "18px",
+    fontSize: "17px",
+    lineHeight: 1.5,
+    wordBreak: "break-word",
+  },
+  userBubble: {
+    background: "#1f2733",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
+  botBubble: {
+    background: "#1e3a5f",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
+  emptyHint: {
+    color: "#7d8793",
+    fontSize: "20px",
+    padding: "10px 0",
+  },
+  errorBox: {
+    background: "#1e3a5f",
+    color: "#fff",
+    borderRadius: "18px",
+    padding: "18px 20px",
+    fontSize: "17px",
+    border: "1px solid rgba(255,255,255,0.08)",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  },
+  warning: {
+    fontSize: "18px",
+  },
+  loadingRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+  },
+  inputRow: {
+    display: "flex",
+    gap: "12px",
+    marginTop: "24px",
+  },
+  input: {
+    flex: 1,
+    background: "#111827",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: "12px",
+    padding: "16px 18px",
+    fontSize: "18px",
+    outline: "none",
+  },
+  sendButton: {
+    background: "#2563eb",
+    color: "#fff",
+    border: "none",
+    borderRadius: "12px",
+    padding: "16px 20px",
+    fontSize: "18px",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+};
 
 export default ChatPage;
