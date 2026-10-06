@@ -5,6 +5,7 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const dotenv = require("dotenv");
+const { findImage } = require("./imageParser");
 
 dotenv.config({ path: path.join(__dirname, ".env") });
 
@@ -102,51 +103,6 @@ function findText(data) {
   return "";
 }
 
-function findImage(data) {
-  const direct = data?.output_image;
-  if (typeof direct?.data === "string") {
-    return {
-      data: direct.data,
-      mimeType: direct.mime_type || direct.mimeType || "image/png",
-    };
-  }
-
-  const found = [];
-
-  const visit = (value) => {
-    if (!value) return;
-
-    if (Array.isArray(value)) {
-      value.forEach(visit);
-      return;
-    }
-
-    if (typeof value !== "object") return;
-
-    const candidate = value.data || value.image?.data;
-    const type = String(value.type || "").toLowerCase();
-    const mimeType = value.mime_type || value.mimeType || "";
-
-    if (
-      typeof candidate === "string" &&
-      (type.includes("image") || mimeType.startsWith("image/"))
-    ) {
-      found.push({
-        data: candidate,
-        mimeType: mimeType || "image/png",
-      });
-    }
-
-    Object.values(value).forEach(visit);
-  };
-
-  visit(data?.output);
-  visit(data?.outputs);
-  visit(data?.steps);
-
-  return found[0] || null;
-}
-
 function buildFallbackSvg(prompt = "AI artwork") {
   const cleanPrompt = String(prompt || "AI artwork")
     .replace(/&/g, "&amp;")
@@ -192,6 +148,26 @@ function buildFallbackSvg(prompt = "AI artwork") {
             fill="#ffffff">Download enabled • No billing required</text>
     </svg>
   `;
+}
+
+function preserveUploadedImage(imageFile) {
+  if (!imageFile || !fs.existsSync(imageFile.path)) {
+    return null;
+  }
+
+  const extension = path.extname(imageFile.originalname) || ".png";
+  const fallbackName = `uploaded-preserved-${Date.now()}-${crypto
+    .randomBytes(6)
+    .toString("hex")}${extension}`;
+  const fallbackPath = path.join(uploadDir, fallbackName);
+
+  fs.copyFileSync(imageFile.path, fallbackPath);
+
+  return {
+    filename: fallbackName,
+    mimeType: imageFile.mimetype || "image/png",
+    path: fallbackPath,
+  };
 }
 
 async function callGemini(model, inputParts) {
@@ -427,6 +403,13 @@ async function convertImageWithAI(imageFile, userPrompt) {
     };
   } catch (error) {
     const msg = String(error?.message || error || "");
+
+    if (imageFile) {
+      const preserved = preserveUploadedImage(imageFile);
+      if (preserved) {
+        return preserved;
+      }
+    }
 
     if (/rate.?limit|quota|free tier|limit:\s*0|429/i.test(msg)) {
       const svg = buildFallbackSvg(prompt);

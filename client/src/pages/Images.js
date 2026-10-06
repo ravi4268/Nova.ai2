@@ -130,6 +130,13 @@ function Images() {
     setError("");
     setAttachedImage(file);
     setGeneratedImage("");
+
+    const nextPrompt = String(prompt || "").trim();
+    window.setTimeout(() => {
+      if (!loading) {
+        generateImage(nextPrompt, file);
+      }
+    }, 120);
   };
 
   const removeAttachment = () => {
@@ -198,10 +205,13 @@ function Images() {
     link.remove();
   };
 
-  const generateImage = async () => {
+  const generateImage = async (overridePrompt = prompt, overrideImage = attachedImage) => {
     if (loading) return;
 
-    if (!prompt.trim() && !attachedImage) {
+    const nextPrompt = String(overridePrompt || "").trim();
+    const nextImage = overrideImage || attachedImage;
+
+    if (!nextPrompt && !nextImage) {
       setError("Write a prompt or upload an image first.");
       return;
     }
@@ -213,12 +223,12 @@ function Images() {
     try {
       const formData = new FormData();
 
-      if (prompt.trim()) {
-        formData.append("prompt", prompt.trim());
+      if (nextPrompt) {
+        formData.append("prompt", nextPrompt);
       }
 
-      if (attachedImage) {
-        formData.append("image", attachedImage);
+      if (nextImage) {
+        formData.append("image", nextImage);
       }
 
       const response = await fetch(
@@ -291,9 +301,17 @@ function Images() {
   };
 
   const selectSuggestion = (item) => {
-    setPrompt(item.prompt);
+    const nextPrompt = item.prompt;
+    setPrompt(nextPrompt);
     setError("");
     setGeneratedImage("");
+
+    window.setTimeout(() => {
+      if (!loading) {
+        generateImage(nextPrompt, attachedImage);
+      }
+    }, 120);
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
