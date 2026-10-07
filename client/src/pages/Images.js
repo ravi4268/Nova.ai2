@@ -82,8 +82,10 @@ const suggestions = [
 function Images() {
   const [prompt, setPrompt] = useState("");
   const [generatedImage, setGeneratedImage] = useState("");
-  const [attachedImage, setAttachedImage] = useState(null);
-  const [attachedPreview, setAttachedPreview] = useState("");
+  const [attachedImages, setAttachedImages] = useState([]);
+  const [userUploadedImages, setUserUploadedImages] = useState([]);
+  const [attachedPreviews, setAttachedPreviews] = useState([]);
+  const [selectedSuggestionTitle, setSelectedSuggestionTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState("");
@@ -92,16 +94,16 @@ function Images() {
   const suggestionsRef = useRef(null);
 
   useEffect(() => {
-    if (!attachedImage) {
-      setAttachedPreview("");
+    if (!attachedImages.length) {
+      setAttachedPreviews([]);
       return undefined;
     }
 
-    const previewUrl = URL.createObjectURL(attachedImage);
-    setAttachedPreview(previewUrl);
+    const previewUrls = attachedImages.map((image) => URL.createObjectURL(image));
+    setAttachedPreviews(previewUrls);
 
-    return () => URL.revokeObjectURL(previewUrl);
-  }, [attachedImage]);
+    return () => previewUrls.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
+  }, [attachedImages]);
 
   useEffect(() => {
     return () => {
@@ -112,35 +114,38 @@ function Images() {
   }, [generatedImage]);
 
   const handleAttach = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
 
-    if (!file.type.startsWith("image/")) {
+    if (files.length > 4) {
+      setError("Select up to 4 images at a time.");
+      event.target.value = "";
+      return;
+    }
+
+    if (files.some((file) => !file.type.startsWith("image/"))) {
       setError("Please select an image file.");
       event.target.value = "";
       return;
     }
 
-    if (file.size > 20 * 1024 * 1024) {
-      setError("Image size must be less than 20MB.");
+    if (files.some((file) => file.size > 20 * 1024 * 1024)) {
+      setError("Each image must be less than 20MB.");
       event.target.value = "";
       return;
     }
 
     setError("");
-    setAttachedImage(file);
+    setAttachedImages(files);
+    setUserUploadedImages(files);
+    setSelectedSuggestionTitle("");
     setGeneratedImage("");
-
-    const nextPrompt = String(prompt || "").trim();
-    window.setTimeout(() => {
-      if (!loading) {
-        generateImage(nextPrompt, file);
-      }
-    }, 120);
   };
 
   const removeAttachment = () => {
-    setAttachedImage(null);
+    setAttachedImages([]);
+    setUserUploadedImages([]);
+    setSelectedSuggestionTitle("");
     setError("");
 
     if (fileInputRef.current) {
@@ -205,14 +210,26 @@ function Images() {
     link.remove();
   };
 
-  const generateImage = async (overridePrompt = prompt, overrideImage = attachedImage) => {
+  const generateImage = async (
+    overridePrompt = prompt,
+    overrideImages = userUploadedImages
+  ) => {
     if (loading) return;
 
     const nextPrompt = String(overridePrompt || "").trim();
-    const nextImage = overrideImage || attachedImage;
+    const nextImages = Array.isArray(overrideImages)
+      ? overrideImages
+      : overrideImages
+        ? [overrideImages]
+        : attachedImages;
 
-    if (!nextPrompt && !nextImage) {
+    if (!nextPrompt && !nextImages.length) {
       setError("Write a prompt or upload an image first.");
+      return;
+    }
+
+    if (nextImages.length && !nextPrompt) {
+      setError("Describe how you want AI to transform the uploaded image.");
       return;
     }
 
@@ -227,9 +244,7 @@ function Images() {
         formData.append("prompt", nextPrompt);
       }
 
-      if (nextImage) {
-        formData.append("image", nextImage);
-      }
+      nextImages.forEach((image) => formData.append("image", image));
 
       const response = await fetch(
         `${API_URL.replace(/\/$/, "")}/api/images/generate`,
@@ -276,9 +291,6 @@ function Images() {
 
       const imageUrl = URL.createObjectURL(imageBlob);
       setGeneratedImage(imageUrl);
-
-      // Automatically download the generated/transformed image.
-      downloadImage(imageUrl, imageBlob.type);
     } catch (generationError) {
       console.error("Image generation error:", generationError);
       setError(
@@ -300,19 +312,43 @@ function Images() {
     }
   };
 
-  const selectSuggestion = (item) => {
-    const nextPrompt = item.prompt;
-    setPrompt(nextPrompt);
+  const selectSuggestion = async (item) => {
+    if (loading) return;
+
     setError("");
-    setGeneratedImage("");
 
-    window.setTimeout(() => {
-      if (!loading) {
-        generateImage(nextPrompt, attachedImage);
+    try {
+      let sourceImages = userUploadedImages;
+
+      if (!sourceImages.length) {
+        const response = await fetch(item.image);
+        if (!response.ok) {
+          throw new Error("Could not load the selected sample image.");
+        }
+
+        const imageBlob = await response.blob();
+        if (!imageBlob.type.startsWith("image/")) {
+          throw new Error("The selected sample is not a valid image.");
+        }
+
+        const extension = imageBlob.type.split("/")[1] || "jpg";
+        sourceImages = [new File(
+          [imageBlob],
+          `nova-sample-${Date.now()}.${extension}`,
+          { type: imageBlob.type }
+        )];
       }
-    }, 120);
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+      setAttachedImages(sourceImages);
+      setSelectedSuggestionTitle(item.title);
+      setPrompt(item.prompt);
+      setGeneratedImage("");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      generateImage(item.prompt, sourceImages);
+    } catch (selectionError) {
+      console.error("Sample image selection error:", selectionError);
+      setError(selectionError.message || "Could not load the selected image.");
+    }
   };
 
   const scrollSuggestions = (direction) => {
@@ -337,13 +373,25 @@ function Images() {
       </header>
 
       <section className="image-generator">
-        {attachedImage && (
+        {attachedImages.length > 0 && (
           <div className="attached-image">
             <div className="attached-left">
-              <img src={attachedPreview} alt="Uploaded image preview" />
+              <div className="attached-previews">
+                {attachedPreviews.map((previewUrl, index) => (
+                  <img
+                    key={previewUrl}
+                    src={previewUrl}
+                    alt={`Uploaded image ${index + 1}`}
+                  />
+                ))}
+              </div>
               <div>
-                <strong>{attachedImage.name}</strong>
-                <small>Image attached</small>
+                <strong>
+                  {attachedImages.length === 1
+                    ? attachedImages[0].name
+                    : `${attachedImages.length} images selected`}
+                </strong>
+                <small>Images will be combined by AI</small>
               </div>
             </div>
 
@@ -372,6 +420,7 @@ function Images() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             hidden
             onChange={handleAttach}
           />
@@ -381,7 +430,11 @@ function Images() {
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Describe a new image..."
+            placeholder={
+              attachedImages.length
+                ? "Describe how to combine or transform these images..."
+                : "Describe a new image..."
+            }
             aria-label="Image prompt"
             disabled={loading}
           />
@@ -399,9 +452,9 @@ function Images() {
           <button
             type="button"
             className="generate-image-button"
-            onClick={generateImage}
+            onClick={() => generateImage(prompt, attachedImages)}
             disabled={loading}
-            title="Generate image"
+            title={attachedImages.length ? "Transform uploaded images" : "Generate image"}
           >
             {loading ? "✨" : "➤"}
           </button>
@@ -480,7 +533,15 @@ function Images() {
               key={item.title}
               onClick={() => selectSuggestion(item)}
             >
-              <img src={item.image} alt={item.title} loading="lazy" />
+              <img
+                src={
+                  item.title === selectedSuggestionTitle
+                    ? generatedImage || attachedPreviews[0] || item.image
+                    : item.image
+                }
+                alt={item.title}
+                loading="lazy"
+              />
               <div className="image-card-overlay">
                 <span>{item.title}</span>
                 <small>✨</small>

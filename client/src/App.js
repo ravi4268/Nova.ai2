@@ -64,6 +64,9 @@ function App() {
   const [message, setMessage] =
     useState("");
 
+  const [quickPrompts, setQuickPrompts] =
+    useState([]);
+
   const [messages, setMessages] =
     useState(() => {
       try {
@@ -132,6 +135,31 @@ function App() {
       JSON.stringify(messages)
     );
   }, [messages]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`${API_URL}/api/prompts`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Could not load chat prompts.");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        if (!cancelled && Array.isArray(data.prompts)) {
+          setQuickPrompts(data.prompts);
+        }
+      })
+      .catch((error) => {
+        console.error("Prompt loading failed:", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -441,9 +469,9 @@ function App() {
   // SEND MESSAGE
   // =========================================
 
-  const sendMessage = async () => {
+  const sendMessage = async (messageToSend = message) => {
     const cleanMessage =
-      message.trim();
+      String(messageToSend || "").trim();
 
     if (
       !cleanMessage &&
@@ -585,11 +613,29 @@ function App() {
         await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.error ||
-            data.reply ||
-            `Server error: ${response.status}`
+        setBackendError(
+          data.error || `Server error: ${response.status}`
         );
+
+        setMessages((prev) => {
+          const updated = [...prev];
+          const lastIndex = updated.length - 1;
+
+          if (lastIndex < 0) {
+            return prev;
+          }
+
+          updated[lastIndex] = {
+            ...updated[lastIndex],
+            ai:
+              data.reply ||
+              "Sorry, Nova AI could not process your request. Please try again.",
+          };
+
+          return updated;
+        });
+
+        return;
       }
 
       setMessages((prev) => {
@@ -745,18 +791,6 @@ function App() {
       recognition;
 
     recognition.start();
-  };
-
-  // =========================================
-  // QUICK PROMPT
-  // =========================================
-
-  const useSuggestion = (text) => {
-    setMessage(text);
-
-    setTimeout(() => {
-      textareaRef.current?.focus();
-    }, 50);
   };
 
   // =========================================
@@ -1102,42 +1136,20 @@ function App() {
                     to help you.
                   </p>
 
-                  <div className="suggestions">
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        useSuggestion(
-                          "Explain JavaScript in simple words with examples."
-                        )
-                      }
-                    >
-                      💡 Explain JavaScript
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        useSuggestion(
-                          "Create a complete responsive React website."
-                        )
-                      }
-                    >
-                      ⚛️ Create React Website
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        useSuggestion(
-                          "Give me some interesting software project ideas."
-                        )
-                      }
-                    >
-                      🚀 Project Ideas
-                    </button>
-
-                  </div>
+                  {quickPrompts.length > 0 && (
+                    <div className="suggestions">
+                      {quickPrompts.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => sendMessage(item.prompt)}
+                          disabled={sending}
+                        >
+                          {item.icon} {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                 </div>
               ) : (

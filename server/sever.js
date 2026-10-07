@@ -20,6 +20,129 @@ const GEMINI_IMAGE_MODEL =
 const GeminiModelEndpoint =
   "https://generativelanguage.googleapis.com/v1beta/models";
 
+const QUICK_PROMPTS = [
+  {
+    id: "explain-topic",
+    icon: "💡",
+    label: "Explain a topic",
+    prompt: "Explain a difficult topic in simple words and give me a few examples.",
+  },
+  {
+    id: "write-email",
+    icon: "✉️",
+    label: "Write an email",
+    prompt: "Write a polite, professional email about the situation I describe: ",
+  },
+  {
+    id: "improve-resume",
+    icon: "📄",
+    label: "Improve my resume",
+    prompt: "Review my resume text and suggest clear improvements to make it stronger: ",
+  },
+  {
+    id: "summarize-text",
+    icon: "📝",
+    label: "Summarize text",
+    prompt: "Summarize this text in simple language and list the key points: ",
+  },
+  {
+    id: "translate-text",
+    icon: "🌐",
+    label: "Translate text",
+    prompt: "Translate this into natural Hindi and explain any difficult phrases: ",
+  },
+  {
+    id: "debug-code",
+    icon: "🧑‍💻",
+    label: "Debug my code",
+    prompt: "Help me find and fix the issue in this code. Explain the fix: ",
+  },
+  {
+    id: "study-plan",
+    icon: "📚",
+    label: "Make a study plan",
+    prompt: "Create a simple study plan for me. My subject, goal, and available time are: ",
+  },
+  {
+    id: "plan-trip",
+    icon: "🧳",
+    label: "Plan a trip",
+    prompt: "Plan a fun weekend trip. My starting location, budget, and interests are: ",
+  },
+  {
+    id: "meal-ideas",
+    icon: "🍽️",
+    label: "Meal ideas",
+    prompt: "Suggest easy meal ideas based on my dietary needs, ingredients, and budget: ",
+  },
+  {
+    id: "project-ideas",
+    icon: "🚀",
+    label: "Project ideas",
+    prompt: "Give me creative project ideas related to this topic or skill: ",
+  },
+  {
+    id: "solve-problem",
+    icon: "🔢",
+    label: "Solve a problem",
+    prompt: "Solve this step by step and explain the reasoning in simple words: ",
+  },
+  {
+    id: "brainstorm-ideas",
+    icon: "✨",
+    label: "Brainstorm ideas",
+    prompt: "Help me brainstorm practical ideas for this goal or challenge: ",
+  },
+  {
+    id: "cover-letter",
+    icon: "📝",
+    label: "Write a cover letter",
+    prompt: "Write a tailored cover letter for this role using my experience: ",
+  },
+  {
+    id: "interview-practice",
+    icon: "🎤",
+    label: "Practice interview questions",
+    prompt: "Help me prepare for an interview for this role with practice questions: ",
+  },
+  {
+    id: "social-post",
+    icon: "📣",
+    label: "Write a social post",
+    prompt: "Write an engaging social media post about this topic for this audience: ",
+  },
+  {
+    id: "check-grammar",
+    icon: "✍️",
+    label: "Check my writing",
+    prompt: "Correct the grammar and improve the clarity of this text while keeping my meaning: ",
+  },
+  {
+    id: "make-quiz",
+    icon: "❓",
+    label: "Create a quiz",
+    prompt: "Create a short quiz with answers to help me learn this topic: ",
+  },
+  {
+    id: "compare-options",
+    icon: "⚖️",
+    label: "Compare options",
+    prompt: "Compare these options by benefits, drawbacks, cost, and best use: ",
+  },
+  {
+    id: "plan-budget",
+    icon: "💰",
+    label: "Plan a budget",
+    prompt: "Help me create a practical budget based on my income, expenses, and savings goal: ",
+  },
+  {
+    id: "workout-plan",
+    icon: "🏃",
+    label: "Make a workout plan",
+    prompt: "Create a beginner-friendly workout plan based on my goals, schedule, and equipment: ",
+  },
+];
+
 const uploadDir = path.join(__dirname, "uploads");
 fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -170,133 +293,78 @@ function preserveUploadedImage(imageFile) {
   };
 }
 
-async function callGemini(model, inputParts) {
+async function callGemini(model, contents) {
   const url = `${GeminiModelEndpoint}/${model}:generateContent?key=${GEMINI_API_KEY}`;
 
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: inputParts,
-          },
-        ],
-      }),
-      signal: AbortSignal.timeout(60000),
-    });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents,
+        }),
+        signal: AbortSignal.timeout(60000),
+      });
 
-    const data = await response.json().catch(() => ({}));
+      const data = await response.json().catch(() => ({}));
 
-    if (!response.ok) {
-      const message =
-        data?.error?.message ||
-        `Gemini API returned HTTP ${response.status}`;
+      if (!response.ok) {
+        const message =
+          data?.error?.message ||
+          `Gemini API returned HTTP ${response.status}`;
+        const error = new Error(message);
+        error.status = response.status;
+        error.retryable =
+          [429, 500, 502, 503, 504].includes(response.status) &&
+          !/quota|billing|limit:\s*0/i.test(message);
+        throw error;
+      }
 
-      throw new Error(message);
-    }
+      return data;
+    } catch (error) {
+      const networkTimeoutCode = error?.cause?.code || error?.code;
+      const isConnectionTimeout =
+        networkTimeoutCode === "UND_ERR_CONNECT_TIMEOUT" ||
+        networkTimeoutCode === "ETIMEDOUT";
 
-    return data;
-  } catch (error) {
-    if (
-      error?.cause?.code === "UND_ERR_CONNECT_TIMEOUT" ||
-      error?.name === "TimeoutError"
-    ) {
-      throw new Error(
-        "Google API connection timed out. Check internet, firewall, VPN/proxy, then retry."
+      if (isConnectionTimeout && attempt < 2) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, 600 * 2 ** attempt + Math.random() * 300)
+        );
+        continue;
+      }
+
+      if (isConnectionTimeout) {
+        throw new Error(
+          "Could not connect to the Google API after 3 attempts. Check internet, firewall, or VPN/proxy, then retry."
+        );
+      }
+
+      if (error?.name === "TimeoutError") {
+        throw new Error(
+          "Gemini did not respond within 60 seconds. Please try again or check your network connection."
+        );
+      }
+
+      if (!error.retryable || attempt === 2) {
+        throw error;
+      }
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, 600 * 2 ** attempt + Math.random() * 300)
       );
     }
-
-    throw error;
   }
 }
 
 async function generateAIResponse(message, history = []) {
   const input = String(message || "").trim();
-  const text = input.toLowerCase();
 
   if (!input) {
     return "Hello! How can I help you today?";
-  }
-
-  if (text.includes("react")) {
-    return `React.js is a JavaScript library used to build user interfaces. It helps developers create reusable components, manage state efficiently, and build interactive frontend apps. Example:
-      
-      import React from "react";
-
-      function Welcome() {
-        return <h1>Hello, Sanidhya!</h1>;
-      }
-
-      export default Welcome;
-
-    React is mainly used for frontend development.`;
-  }
-
-  if (text.includes("node")) {
-    return `Node.js is a JavaScript runtime used for backend development. It lets you build APIs, server logic, and database connections. Example:
-
-      const http = require("http");
-
-      const server = http.createServer((req, res) => {
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        res.end("Hello from Node.js server!");
-      });
-
-      server.listen(3000, () => {
-        console.log("Server running on port 3000");
-      });`;
-  }
-
-  if (text.includes("javascript") || text.includes("js")) {
-    return `JavaScript is a programming language used for web development. It runs in browsers and can also run on servers with Node.js. Example:
-
-      let name = "Sanidhya";
-      console.log("Hello, " + name);
-
-    JavaScript is used for DOM manipulation, form validation, animations, API calls, and frontend/backend work.`;
-  }
-
-  if (text.includes("full stack") || text.includes("fullstack")) {
-    return `A full stack developer works on both the frontend and backend of an application. They handle UI, API, database, and deployment. Frontend: HTML, CSS, JavaScript, React.js. Backend: Node.js, Express.js, database, server logic.`;
-  }
-
-  if (text.includes("resume") || text.includes("cv")) {
-    return `Resume example:
-
-      Name: Sanidhya Dwivedi
-      Father's Name: Ravi Dwivedi
-      Mother's Name: Shuchi Dwivedi
-
-      Skills:
-      - JavaScript
-      - React.js
-      - Node.js
-      - Frontend Development
-      - Backend Development
-
-      Objective:
-      To work in a professional environment where I can improve my technical skills and contribute to the organization.`;
-  }
-
-  if (text.includes("world cup") || text.includes("fifa")) {
-    return `The 2022 FIFA World Cup winner was Argentina. The 2026 winner is not yet decided because the tournament is in the future.`;
-  }
-
-  if (text.includes("election")) {
-    return `Election results depend on the country and year. Please tell me the country and year, and I can tell you who won that election.`;
-  }
-
-  if (text.includes("cybersecurity") || text.includes("cyber security")) {
-    return `Cybersecurity is the practice of protecting systems, data, and networks from digital attacks. It includes firewalls, antivirus, encryption, phishing prevention, and secure coding.`;
-  }
-
-  if (text.includes("hello") || text.includes("hi") || text.includes("namaste")) {
-    return "Hello! I can explain JavaScript, React.js, Node.js, full stack development, resume writing, cybersecurity, elections, and World Cup winners.";
   }
 
   if (!GEMINI_API_KEY) {
@@ -315,7 +383,7 @@ async function generateAIResponse(message, history = []) {
       },
     ];
 
-    const data = await callGemini(GEMINI_TEXT_MODEL, contents[0].parts);
+    const data = await callGemini(GEMINI_TEXT_MODEL, contents);
     const answer = findText(data);
 
     if (!answer) {
@@ -326,19 +394,31 @@ async function generateAIResponse(message, history = []) {
   } catch (error) {
     const msg = String(error?.message || error || "");
 
-    if (/rate.?limit|quota|free tier|limit:\s*0|429/i.test(msg)) {
+    if (/quota|free tier|limit:\s*0|billing/i.test(msg)) {
       return "The Gemini free tier is exhausted. Please enable billing or use a paid model.";
+    }
+
+    if (
+      [429, 500, 502, 503, 504].includes(error?.status) ||
+      /high demand|overloaded|temporarily unavailable/i.test(msg)
+    ) {
+      return "Gemini is temporarily experiencing high demand. Please wait a moment and try again.";
     }
 
     throw error;
   }
 }
 
-async function convertImageWithAI(imageFile, userPrompt) {
+async function convertImageWithAI(imageInput, userPrompt) {
   const prompt = userPrompt?.trim() || "Create a polished AI image.";
+  const imageFiles = Array.isArray(imageInput)
+    ? imageInput
+    : imageInput
+      ? [imageInput]
+      : [];
   const input = [];
 
-  if (imageFile) {
+  for (const imageFile of imageFiles) {
     if (!imageFile.mimetype?.startsWith("image/")) {
       throw new Error("Uploaded file is not an image.");
     }
@@ -356,8 +436,10 @@ async function convertImageWithAI(imageFile, userPrompt) {
   }
 
   input.push({
-    text: imageFile
-      ? `${prompt}\nEdit the provided image. Preserve the main subject and return the edited image.`
+    text: imageFiles.length > 1
+      ? `Combine all uploaded source images into one cohesive final image. Use the first image as the scene or background, and naturally incorporate the subjects from the other images into it. Do not create a collage or side-by-side layout. Follow this instruction: ${prompt}\nReturn one edited image, not a description.`
+      : imageFiles.length
+        ? `${prompt}\nEdit the provided image. Preserve details the user did not ask to change, and return the edited image.`
       : `${prompt}\nGenerate an image. Do not only describe it.`,
   });
 
@@ -366,7 +448,12 @@ async function convertImageWithAI(imageFile, userPrompt) {
       throw new Error("GEMINI_API_KEY missing in server/.env");
     }
 
-    const data = await callGemini(GEMINI_IMAGE_MODEL, input);
+    const data = await callGemini(GEMINI_IMAGE_MODEL, [
+      {
+        role: "user",
+        parts: input,
+      },
+    ]);
     const generatedImage = findImage(data);
 
     if (!generatedImage?.data) {
@@ -404,8 +491,8 @@ async function convertImageWithAI(imageFile, userPrompt) {
   } catch (error) {
     const msg = String(error?.message || error || "");
 
-    if (imageFile) {
-      const preserved = preserveUploadedImage(imageFile);
+    if (imageFiles.length) {
+      const preserved = preserveUploadedImage(imageFiles[0]);
       if (preserved) {
         return preserved;
       }
@@ -446,6 +533,10 @@ app.get("/api/test", (_req, res) => {
     port: PORT,
     geminiKey: GEMINI_API_KEY ? "configured" : "missing",
   });
+});
+
+app.get("/api/prompts", (_req, res) => {
+  res.json({ prompts: QUICK_PROMPTS });
 });
 
 app.post("/api/payment/send-otp", (req, res) => {
@@ -494,19 +585,19 @@ app.get("/api/images/generate", (_req, res) => {
   });
 });
 
-app.post("/api/images/generate", upload.single("image"), async (req, res) => {
+app.post("/api/images/generate", upload.array("image", 4), async (req, res) => {
   try {
     const prompt = req.body?.prompt?.trim() || req.body?.message?.trim() || "";
-    const imageFile = req.file || null;
+    const imageFiles = req.files || [];
 
-    if (!prompt && !imageFile) {
+    if (!prompt && !imageFiles.length) {
       return res.status(400).json({
         success: false,
         message: "Prompt likhein ya image upload karein.",
       });
     }
 
-    const generated = await convertImageWithAI(imageFile, prompt);
+    const generated = await convertImageWithAI(imageFiles, prompt);
 
     return res
       .status(200)
@@ -598,10 +689,24 @@ app.post(
       return res.json({ success: true, type: "text", reply });
     } catch (error) {
       console.error("Chat error:", error);
-      return res.status(500).json({
+      const errorMessage = String(
+        error?.message || "Nova AI server error."
+      );
+      const isTemporaryFailure =
+        /timeout|timed out|connect|high demand|overloaded|temporarily unavailable/i.test(
+          errorMessage
+        );
+      const isMissingApiKey = /GEMINI_API_KEY missing/i.test(errorMessage);
+      const reply = isTemporaryFailure
+        ? "I couldn't reach Gemini right now. Please try sending your message again in a moment."
+        : isMissingApiKey
+          ? "Nova AI is not configured on the server yet. Please add the Gemini API key and try again."
+          : "Sorry, Nova AI could not process your request. Please try again.";
+
+      return res.status(isTemporaryFailure ? 503 : 500).json({
         success: false,
-        error: error.message || "Nova AI server error.",
-        reply: "Sorry, Nova AI could not process your request.",
+        error: errorMessage,
+        reply,
       });
     }
   }
