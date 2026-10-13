@@ -483,6 +483,33 @@
   font-weight: 600;
 }
 
+.ai-prompt-label {
+  margin-top: 24px;
+}
+
+.initial-project-prompt {
+  width: 100%;
+  min-height: 112px;
+  resize: vertical;
+  padding: 14px 16px;
+  box-sizing: border-box;
+  border: 1px solid #3b475b;
+  border-radius: 12px;
+  background: #0b111b;
+  color: #ffffff;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.initial-project-prompt::placeholder {
+  color: #8995a9;
+}
+
+.initial-project-prompt:focus-visible {
+  outline: 2px solid #78a9ff;
+  outline-offset: 2px;
+}
+
 /* =========================================
    INPUT
 ========================================= */
@@ -779,6 +806,11 @@
     font-size: 15px;
   }
 
+  .initial-project-prompt {
+    min-height: 96px;
+    font-size: 14px;
+  }
+
   .project-info-box {
     padding: 16px;
   }
@@ -967,6 +999,15 @@
   .project-container {
     min-height: 340px;
     border-radius: 16px;
+  }
+
+  .create-modal {
+    max-height: calc(100dvh - 24px);
+    padding: 20px 16px;
+  }
+
+  .project-workspace {
+    overflow-x: hidden;
   }
 
   .empty-projects {

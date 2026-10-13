@@ -10,7 +10,7 @@ const { findImage } = require("./imageParser");
 dotenv.config({ path: path.join(__dirname, ".env") });
 
 const app = express();
-const PORT = Number(process.env.PORT) || 5001;
+const PORT = Number(process.env.PORT) || 5000;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const GEMINI_TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || "gemini-2.0-flash";
@@ -293,7 +293,13 @@ function preserveUploadedImage(imageFile) {
   };
 }
 
-async function callGemini(model, contents) {
+async function callGemini(
+  model,
+  contents,
+  generationConfig = null,
+  tools = null,
+  systemInstruction = null
+) {
   const url = `${GeminiModelEndpoint}/${model}:generateContent?key=${GEMINI_API_KEY}`;
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -305,6 +311,9 @@ async function callGemini(model, contents) {
         },
         body: JSON.stringify({
           contents,
+          ...(generationConfig ? { generationConfig } : {}),
+          ...(tools ? { tools } : {}),
+          ...(systemInstruction ? { systemInstruction } : {}),
         }),
         signal: AbortSignal.timeout(60000),
       });
@@ -367,6 +376,10 @@ async function generateAIResponse(message, history = []) {
     return "Hello! How can I help you today?";
   }
 
+  if (/^(hi+|hello+|hey+|good morning|good afternoon|good evening|namaste|नमस्ते)[.!? ]*$/i.test(input)) {
+    return "Hi! How can I help you today?";
+  }
+
   if (!GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY missing in server/.env");
   }
@@ -383,7 +396,19 @@ async function generateAIResponse(message, history = []) {
       },
     ];
 
-    const data = await callGemini(GEMINI_TEXT_MODEL, contents);
+    const needsCurrentInformation =
+      /\b(today|current|latest|right now|weather|rain|score|match|election|who won|results)\b|\b(aaj|mausam|baarish|barish|kaun jeeta|chunav|natije)\b/i.test(input);
+    const data = await callGemini(
+      GEMINI_TEXT_MODEL,
+      contents,
+      null,
+      needsCurrentInformation ? [{ google_search: {} }] : null,
+      {
+        parts: [{
+          text: "You are Nova AI, a helpful conversational assistant. Reply in the language the user used and keep the answer clear and natural. For current events, weather, scores, or election results, use Google Search grounding when available. If a weather question has no location, ask which city. Never invent live information.",
+        }],
+      }
+    );
     const answer = findText(data);
 
     if (!answer) {
@@ -626,6 +651,81 @@ app.get("/api/download/:filename", (req, res) => {
   return res.download(filePath, filename);
 });
 
+app.post("/api/project-ai", async (req, res) => {
+  const projectName = String(req.body?.projectName || "").trim();
+  const prompt = String(req.body?.prompt || "").trim();
+  const files = req.body?.files;
+
+  if (!projectName || !prompt || !files || typeof files !== "object" || Array.isArray(files)) {
+    return res.status(400).json({
+      success: false,
+      error: "Project name, prompt, and project files are required.",
+    });
+  }
+
+  if (!GEMINI_API_KEY) {
+    return res.status(503).json({
+      success: false,
+      error: "GEMINI_API_KEY missing in server/.env",
+    });
+  }
+
+  try {
+    const projectFiles = Object.fromEntries(
+      Object.entries(files)
+        .filter(([name, content]) =>
+          typeof name === "string" &&
+          typeof content === "string" &&
+          !name.startsWith("/") &&
+          !name.split(/[\\/]/).includes("..")
+        )
+        .map(([name, content]) => [name, content.slice(0, 120000)])
+    );
+
+    const contents = [{
+      role: "user",
+      parts: [{
+        text: `You are Nova AI, a senior frontend engineer. Update the user's project to satisfy their request. Build polished, accessible, responsive HTML/CSS/JS that works on mobile and desktop. Preserve existing functionality unless asked to change it. Return one complete HTML document in the html field, not a diff.\n\nProject name: ${projectName.slice(0, 100)}\nUser request: ${prompt.slice(0, 8000)}\nCurrent files: ${JSON.stringify(projectFiles)}`,
+      }],
+    }];
+
+    const data = await callGemini(GEMINI_TEXT_MODEL, contents, {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "OBJECT",
+        properties: {
+          reply: { type: "STRING" },
+          html: { type: "STRING" },
+        },
+        required: ["reply", "html"],
+      },
+      maxOutputTokens: 8192,
+    });
+    const modelText = findText(data);
+    const jsonText = modelText
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/, "")
+      .trim();
+    const result = JSON.parse(jsonText);
+
+    if (typeof result.html !== "string" || !result.html.trim()) {
+      throw new Error("Nova AI did not return an updated project page.");
+    }
+
+    return res.json({
+      success: true,
+      reply: String(result.reply || "Project updated successfully."),
+      files: { "index.html": result.html },
+    });
+  } catch (error) {
+    console.error("Project AI error:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Nova AI could not update this project.",
+    });
+  }
+});
+
 app.post(
   "/api/chat",
   upload.fields([
@@ -727,19 +827,21 @@ app.use((req, res) => {
   });
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`Nova AI backend running at http://localhost:${PORT}`);
-  console.log(`Gemini API key: ${GEMINI_API_KEY ? "FOUND" : "MISSING"}`);
-  console.log(`Image model: ${GEMINI_IMAGE_MODEL}`);
-});
+if (require.main === module) {
+  const server = app.listen(PORT, () => {
+    console.log(`Nova AI backend running at http://localhost:${PORT}`);
+    console.log(`Gemini API key: ${GEMINI_API_KEY ? "FOUND" : "MISSING"}`);
+    console.log(`Image model: ${GEMINI_IMAGE_MODEL}`);
+  });
 
-server.on("error", (error) => {
-  if (error.code === "EADDRINUSE") {
-    console.error(`Port ${PORT} is already in use. Stop the other server first.`);
-    process.exit(1);
-  }
+  server.on("error", (error) => {
+    if (error.code === "EADDRINUSE") {
+      console.error(`Port ${PORT} is already in use. Stop the other server first.`);
+      process.exit(1);
+    }
 
-  console.error("Server error:", error);
-});
+    console.error("Server error:", error);
+  });
+}
 
 module.exports = app;

@@ -9,8 +9,6 @@ import {
   FiMicOff,
 } from "react-icons/fi";
 
-import "./styles.css";
-
 import Library from "./pages/Library";
 import Images from "./pages/Images";
 import Subscription from "./pages/Subscription";
@@ -21,7 +19,7 @@ const API_URL =
   process.env.REACT_APP_API_URL ||
   (process.env.NODE_ENV === "production"
     ? ""
-    : "http://localhost:5001");
+    : "http://localhost:5000");
 
 function App() {
   // =========================================
@@ -689,7 +687,7 @@ function App() {
       );
 
       setBackendError(
-        "AI connection failed. Make sure backend is running on port 5001."
+        "AI connection failed. Make sure backend is running on port 5000."
       );
 
       setMessages((prev) => {
@@ -707,7 +705,7 @@ function App() {
           ...updated[lastIndex],
 
           ai:
-            "⚠️ Nova AI backend is not connected. Please start your backend with `node server.js` and check your GEMINI_API_KEY.",
+            "I couldn't reach Nova AI. Please check that the backend is running on port 5000, then try again.",
         };
 
         return updated;

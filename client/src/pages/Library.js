@@ -8,7 +8,7 @@ const API_URL =
   process.env.REACT_APP_API_URL ||
   (process.env.NODE_ENV === "production"
     ? ""
-    : "http://localhost:5001");
+    : "http://localhost:5000");
 
 function Library() {
   const [activeTab, setActiveTab] = useState("all");
@@ -77,6 +77,9 @@ function Library() {
   const [projectName, setProjectName] =
     useState(DEFAULT_PROJECT_NAME);
 
+  const [initialPrompt, setInitialPrompt] =
+    useState("");
+
   const [memory, setMemory] =
     useState("Default memory");
 
@@ -115,6 +118,7 @@ function Library() {
 
   const openCreateModal = () => {
     setProjectName(DEFAULT_PROJECT_NAME);
+    setInitialPrompt("");
     setMemory("Default memory");
     setShowModal(true);
   };
@@ -122,6 +126,7 @@ function Library() {
   const closeCreateModal = () => {
     setShowModal(false);
     setProjectName(DEFAULT_PROJECT_NAME);
+    setInitialPrompt("");
   };
 
   // ==========================================
@@ -130,6 +135,7 @@ function Library() {
 
   const createProject = () => {
     const name = projectName.trim();
+    const prompt = initialPrompt.trim();
 
     if (!name) return;
 
@@ -161,8 +167,14 @@ A responsive project created with Nova AI.
     setActiveTab("all");
     setShowModal(false);
     setProjectName("");
+    setInitialPrompt("");
 
     openProject(newProject);
+
+    if (prompt) {
+      setAiPrompt(prompt);
+      askProjectAi(null, newProject, prompt);
+    }
   };
 
   function createStarterHtml(name) {
@@ -298,13 +310,14 @@ A responsive project created with Nova AI.
   const saveUpdatedProject = (
     updatedFiles,
     reply,
-    prompt
+    prompt,
+    projectBase = activeProject
   ) => {
     const updatedProject = {
-      ...activeProject,
+      ...projectBase,
 
       files: {
-        ...activeProject.files,
+        ...projectBase.files,
         ...updatedFiles,
       },
 
@@ -417,16 +430,22 @@ A responsive project created with Nova AI.
   // ASK NOVA AI
   // ==========================================
 
-  const askProjectAi = async (event) => {
-    event.preventDefault();
+  const askProjectAi = async (
+    event,
+    projectOverride = null,
+    promptOverride = null
+  ) => {
+    event?.preventDefault();
 
     const prompt =
-      aiPrompt.trim();
+      (promptOverride ?? aiPrompt).trim();
+    const projectToUpdate =
+      projectOverride || activeProject;
 
     if (
       !prompt ||
       aiLoading ||
-      !activeProject
+      !projectToUpdate
     ) {
       return;
     }
@@ -451,12 +470,12 @@ A responsive project created with Nova AI.
 
           body: JSON.stringify({
             projectName:
-              activeProject.name,
+              projectToUpdate.name,
 
             prompt,
 
             files:
-              activeProject.files || {},
+              projectToUpdate.files || {},
           }),
         }
       );
@@ -483,7 +502,8 @@ A responsive project created with Nova AI.
           data.files,
           data.reply ||
             "Project updated successfully.",
-          prompt
+          prompt,
+          projectToUpdate
         );
 
         setAiReply(
@@ -498,7 +518,7 @@ A responsive project created with Nova AI.
         );
 
         const updatedProject = {
-          ...activeProject,
+          ...projectToUpdate,
           aiReply:
             data.reply || "",
           lastPrompt: prompt,
@@ -595,7 +615,7 @@ Make sure your Nova AI backend is running on ${API_URL}.`
               </strong>
 
               <small>
-                Saved locally ·{" "}
+                  Saved locally ·{" "}
                 {activeProject.memory ||
                   "Default memory"}
               </small>
@@ -1091,6 +1111,21 @@ Make sure your Nova AI backend is running on ${API_URL}.`
 
             </div>
 
+            <label className="project-label ai-prompt-label" htmlFor="initial-project-prompt">
+              What should AI build?
+            </label>
+
+            <textarea
+              id="initial-project-prompt"
+              className="initial-project-prompt"
+              value={initialPrompt}
+              onChange={(event) =>
+                setInitialPrompt(event.target.value)
+              }
+              placeholder="Describe your website, app, or idea..."
+              rows={4}
+            />
+
             <div className="project-info-box">
 
               <span className="info-icon">
@@ -1155,7 +1190,9 @@ Make sure your Nova AI backend is running on ${API_URL}.`
                   createProject
                 }
               >
-                Create project
+                {initialPrompt.trim()
+                  ? "Create with AI"
+                  : "Create project"}
               </button>
 
             </div>

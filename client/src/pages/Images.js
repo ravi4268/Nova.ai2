@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import "./Images.css";
 
 const API_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:5001";
+  process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const suggestions = [
   {

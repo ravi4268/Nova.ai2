@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5001";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 function ChatPage() {
   const [messages, setMessages] = useState([]);
@@ -48,7 +48,7 @@ function ChatPage() {
         ]);
       }
     } catch {
-      setError("AI connection failed. Make sure backend is running on port 5001.");
+      setError("AI connection failed. Make sure backend is running on port 5000.");
     } finally {
       setIsLoading(false);
     }
@@ -63,10 +63,6 @@ function ChatPage() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.banner}>
-        AI connection failed. Make sure backend is running on port 5001.
-      </div>
-
       <div style={styles.container}>
         <div style={styles.header}>
           <div style={styles.botIcon}>✦</div>
@@ -157,15 +153,6 @@ const styles = {
     fontFamily: "Segoe UI, sans-serif",
     padding: "0",
     margin: "0",
-  },
-  banner: {
-    background: "#7a0f1c",
-    color: "#fff",
-    fontWeight: 700,
-    padding: "14px 20px",
-    fontSize: "18px",
-    textAlign: "left",
-    borderBottom: "1px solid rgba(255,255,255,0.1)",
   },
   container: {
     maxWidth: "1200px",
