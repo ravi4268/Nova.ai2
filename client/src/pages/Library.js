@@ -157,32 +157,7 @@ const API_URL =
 function Library() {
   const [activeTab, setActiveTab] = useState("all");
 
-  const [activeProject, setActiveProject] = useState(() => {
-    try {
-      const saved = localStorage.getItem("novaActiveProject");
-
-      if (saved) {
-        const project = JSON.parse(saved);
-
-        if (
-          project?.files?.["index.html"] &&
-          !project.files["index.html"].includes("anaya-shell-v3")
-        ) {
-          project.files["index.html"] = buildProjectHtml(
-            project.name,
-            project.files["index.html"]
-          );
-        }
-
-        return project;
-      }
-
-      const seeded = createSeedProjects();
-      return seeded[0];
-    } catch {
-      return createSeedProjects()[0];
-    }
-  });
+  const [activeProject, setActiveProject] = useState(null);
 
   const [projects, setProjects] = useState(() => {
     try {
@@ -305,6 +280,7 @@ function Library() {
       id: Date.now(),
       name,
       type: "Created by you",
+      aiGenerated: Boolean(prompt),
       modified: "Just now",
       memory,
 
@@ -1126,20 +1102,6 @@ ${errorMessage}`
 
       </div>
 
-      {/* TABLE HEADER */}
-
-      <div className="project-header">
-
-        <span>
-          PROJECT
-        </span>
-
-        <span>
-          LAST UPDATED
-        </span>
-
-      </div>
-
       {/* PROJECTS */}
 
       <div className="project-container">
@@ -1173,74 +1135,61 @@ ${errorMessage}`
         ) : (
 
           <div className="project-list">
-
-            {filteredProjects.map(
-              (project) => (
-
-                <div
-                  className="project-row"
-                  key={project.id}
-                >
-
-                  <button
-                    type="button"
-                    className="project-open"
-                    onClick={() =>
-                      openProject(
-                        project
-                      )
+            {filteredProjects.map((project) => (
+              <article className="project-card" key={project.id}>
+                <div className="project-card-preview">
+                  <iframe
+                    title={`${project.name} preview`}
+                    srcDoc={
+                      project.files?.["index.html"] ||
+                      createStarterHtml(project.name)
                     }
-                  >
-
-                    <div className="project-info">
-
-                      <div className="folder-icon"><FiFolder /></div>
-
-                      <div className="project-meta">
-
-                        <strong>
-                          {project.name}
-                        </strong>
-
-                        <small className="project-type">
-                          {project.type}
-                        </small>
-
-                        {project.description && (
-                          <small className="project-description">
-                            {project.description}
-                          </small>
-                        )}
-
-                      </div>
-
-                    </div>
-
-                  </button>
-
-                  <span className="project-date">
-                    {project.modified}
+                    sandbox="allow-scripts"
+                    loading="lazy"
+                    tabIndex={-1}
+                  />
+                  <span className="project-preview-label">
+                    <FiZap aria-hidden="true" /> Live preview
                   </span>
-
-                  <button
-                    type="button"
-                    className="delete-project"
-                    aria-label={`Delete ${project.name}`}
-                    title="Delete project"
-                    onClick={() =>
-                      setProjectToDelete(
-                        project
-                      )
-                    }
-                  >
-                    <FiTrash2 />
-                  </button>
-
                 </div>
 
-              )
-            )}
+                <div className="project-card-content">
+                  <div className="project-card-meta">
+                    <span className="project-type-badge">
+                      {project.aiGenerated ? <><FiZap aria-hidden="true" /> Nova AI</> : project.type || "Project"}
+                    </span>
+                    <span className="project-card-date">
+                      {project.modified || "Saved"}
+                    </span>
+                  </div>
 
+                  <h3>{project.name}</h3>
+                  <p>
+                    {project.description || project.lastPrompt ||
+                      "Open this project to preview, download, or refine it with Nova AI."}
+                  </p>
+
+                  <div className="project-card-actions">
+                    <button
+                      type="button"
+                      className="project-card-open"
+                      onClick={() => openProject(project)}
+                    >
+                      <FiArrowUpRight aria-hidden="true" /> Open project
+                    </button>
+                    <button
+                      type="button"
+                      className="delete-project"
+                      aria-label={`Delete ${project.name}`}
+                      title="Delete project"
+                      onClick={() => setProjectToDelete(project)}
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
 
         )}
