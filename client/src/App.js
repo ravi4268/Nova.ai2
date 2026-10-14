@@ -517,6 +517,7 @@ function App() {
           : null,
 
       imageUrl: null,
+      uploadedImageUrl: null,
 
       uploadedFileUrl: null,
 
@@ -656,6 +657,10 @@ function App() {
 
           imageUrl:
             data.image?.url ||
+            null,
+
+          uploadedImageUrl:
+            data.uploadedImage?.url ||
             null,
 
           uploadedFileUrl:
@@ -1182,7 +1187,7 @@ function App() {
 
                                 <img
                                   src={
-                                    item.imageUrl ||
+                                    item.uploadedImageUrl ||
                                     item.imagePreview
                                   }
                                   alt="Uploaded"

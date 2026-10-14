@@ -369,14 +369,14 @@ async function callGemini(
   }
 }
 
-async function generateAIResponse(message, history = []) {
+async function generateAIResponse(message, history = [], imageFile = null) {
   const input = String(message || "").trim();
 
-  if (!input) {
+  if (!input && !imageFile) {
     return "Hello! How can I help you today?";
   }
 
-  if (/^(hi+|hello+|hey+|good morning|good afternoon|good evening|namaste|नमस्ते)[.!? ]*$/i.test(input)) {
+  if (!imageFile && /^(hi+|hello+|hey+|good morning|good afternoon|good evening|namaste|नमस्ते)[.!? ]*$/i.test(input)) {
     return "Hi! How can I help you today?";
   }
 
@@ -385,6 +385,21 @@ async function generateAIResponse(message, history = []) {
   }
 
   try {
+    const userParts = [];
+
+    if (imageFile) {
+      userParts.push({
+        inline_data: {
+          mime_type: imageFile.mimetype,
+          data: fs.readFileSync(imageFile.path).toString("base64"),
+        },
+      });
+    }
+
+    userParts.push({
+      text: input || "Please describe the uploaded image and tell me what you notice.",
+    });
+
     const contents = [
       ...history.map((item) => ({
         role: item.role === "assistant" ? "model" : "user",
@@ -392,7 +407,7 @@ async function generateAIResponse(message, history = []) {
       })),
       {
         role: "user",
-        parts: [{ text: input }],
+        parts: userParts,
       },
     ];
 
@@ -699,8 +714,13 @@ app.post("/api/project-ai", async (req, res) => {
         },
         required: ["reply", "html"],
       },
-      maxOutputTokens: 8192,
+      maxOutputTokens: 16384,
     });
+    if (data?.candidates?.[0]?.finishReason === "MAX_TOKENS") {
+      throw new Error(
+        "Nova AI's project response was cut off. Please try again with a shorter request."
+      );
+    }
     const modelText = findText(data);
     const jsonText = modelText
       .replace(/^```(?:json)?\s*/i, "")
@@ -741,24 +761,19 @@ app.post(
         typeof req.body?.message === "string" ? req.body.message.trim() : "";
 
       if (imageFile) {
-        const generated = await convertImageWithAI(
-          imageFile,
-          message || "Convert this photo with AI."
+        const reply = await generateAIResponse(
+          message || "Please describe the uploaded image and tell me what you notice.",
+          history,
+          imageFile
         );
 
         return res.json({
           success: true,
           type: "image",
-          reply: "Your photo has been converted with AI.",
-          image: {
+          reply,
+          uploadedImage: {
             name: imageFile.originalname,
             url: uploadedUrl(req, imageFile.filename),
-          },
-          generatedImage: {
-            name: generated.filename,
-            type: generated.mimeType,
-            url: uploadedUrl(req, generated.filename),
-            downloadUrl: downloadUrl(req, generated.filename),
           },
         });
       }
@@ -827,7 +842,7 @@ app.use((req, res) => {
   });
 });
 
-if (require.main === module) {
+function startServer() {
   const server = app.listen(PORT, () => {
     console.log(`Nova AI backend running at http://localhost:${PORT}`);
     console.log(`Gemini API key: ${GEMINI_API_KEY ? "FOUND" : "MISSING"}`);
@@ -842,6 +857,14 @@ if (require.main === module) {
 
     console.error("Server error:", error);
   });
+
+  return server;
+}
+
+app.startServer = startServer;
+
+if (require.main === module) {
+  startServer();
 }
 
 module.exports = app;

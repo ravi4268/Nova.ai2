@@ -1,1 +1,1 @@
-require("./sever.js");
+require("./sever.js").startServer();

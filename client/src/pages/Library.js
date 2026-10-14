@@ -1,8 +1,152 @@
 import React, { useEffect, useMemo, useState } from "react";
+import {
+  FiArrowUpRight,
+  FiFolder,
+  FiLayers,
+  FiPlus,
+  FiSearch,
+  FiStar,
+  FiTrash2,
+  FiZap,
+} from "react-icons/fi";
 import "./Library.css";
 import { buildProjectHtml } from "../utils/projectTemplate";
 
 const DEFAULT_PROJECT_NAME = "NOVA.AI";
+
+const buildSeedProject = ({
+  name,
+  type,
+  description,
+  accent,
+  bodyHtml,
+}) => ({
+  id: `seed-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+  name,
+  type,
+  memory: "Default memory",
+  modified: "Today",
+  description,
+  accent,
+  files: {
+    "index.html": buildProjectHtml(name, bodyHtml),
+    "README.md": `# ${name}\n\n${description}\n`,
+  },
+  aiReply: "",
+  lastPrompt: "",
+});
+
+const createSeedProjects = () => [
+  buildSeedProject({
+    name: "Bloom Cafe",
+    type: "Cafe & Hotel",
+    description: "Luxury cafe website with warm hospitality, elegant menu sections, and a memorable guest experience.",
+    accent: "#f2b84b",
+    bodyHtml: `
+      <section class="project-hero">
+        <div class="project-badge">Freshly brewed • Open daily</div>
+        <h1>Bloom Cafe</h1>
+        <p>Warm interiors, seasonal plates, and a refined experience for slow mornings and lively evenings.</p>
+        <div class="project-cta-row">
+          <button>Book a table</button>
+          <button class="ghost">View menu</button>
+        </div>
+      </section>
+      <section class="project-grid">
+        <article>
+          <span>Signature menu</span>
+          <h3>Chef-crafted breakfasts</h3>
+          <p>Rose latte, smashed avocado toast, truffle eggs, and seasonal desserts.</p>
+        </article>
+        <article>
+          <span>Ambience</span>
+          <h3>City rooftop dining</h3>
+          <p>Golden lighting, botanical textures, and a cozy social vibe that feels premium.</p>
+        </article>
+        <article>
+          <span>Guest experience</span>
+          <h3>Private events</h3>
+          <p>Perfect for brunches, coffee tastings, and intimate celebrations with tailored service.</p>
+        </article>
+      </section>
+      <section class="project-banner">
+        <div>
+          <span>Seasonal favourites</span>
+          <h2>Our signature coffee rituals</h2>
+        </div>
+        <p>Handpicked beans, artisanal pastries, and beautifully plated comfort food designed for a slower rhythm.</p>
+      </section>
+    `,
+  }),
+  buildSeedProject({
+    name: "Hotel Haven",
+    type: "Hospitality",
+    description: "Premium hotel landing page with room highlights, amenities, and guest-focused booking journeys.",
+    accent: "#7ac6ff",
+    bodyHtml: `
+      <section class="project-hero hotel-hero">
+        <div class="project-badge">Boutique stay • 4.9 guest rating</div>
+        <h1>Hotel Haven</h1>
+        <p>Thoughtful spaces, curated comfort, and effortless hospitality for every kind of stay.</p>
+        <div class="project-cta-row">
+          <button>Reserve now</button>
+          <button class="ghost">Explore suites</button>
+        </div>
+      </section>
+      <section class="project-grid hotel-grid">
+        <article>
+          <span>Rooms</span>
+          <h3>Elegant suites</h3>
+          <p>Plush bedding, calm lighting, and refined details tailored for restful nights.</p>
+        </article>
+        <article>
+          <span>Amenities</span>
+          <h3>Wellness & dining</h3>
+          <p>Pool deck, spa rituals, rooftop lounge, and chef-led dining experiences.</p>
+        </article>
+        <article>
+          <span>Location</span>
+          <h3>City center</h3>
+          <p>Walkable access to business districts, galleries, and local attractions.</p>
+        </article>
+      </section>
+    `,
+  }),
+  buildSeedProject({
+    name: "Institute Future",
+    type: "Education",
+    description: "Modern institute landing page featuring programs, faculty, and academic experiences for future students.",
+    accent: "#8bd9b3",
+    bodyHtml: `
+      <section class="project-hero institute-hero">
+        <div class="project-badge">Admissions open • 2026 intake</div>
+        <h1>Institute Future</h1>
+        <p>Empowering confident learners with practical programs, mentorship, and career-ready experiences.</p>
+        <div class="project-cta-row">
+          <button>Apply now</button>
+          <button class="ghost">Explore programs</button>
+        </div>
+      </section>
+      <section class="project-grid institute-grid">
+        <article>
+          <span>Programs</span>
+          <h3>Career pathways</h3>
+          <p>Technology, design, business, and innovation labs built for real-world results.</p>
+        </article>
+        <article>
+          <span>Mentors</span>
+          <h3>Guided learning</h3>
+          <p>Close mentorship, project-based challenges, and support that keeps students progressing.</p>
+        </article>
+        <article>
+          <span>Outcomes</span>
+          <h3>Future-ready</h3>
+          <p>Students graduate with portfolios, confidence, and the skills to make an impact.</p>
+        </article>
+      </section>
+    `,
+  }),
+];
 
 const API_URL =
   process.env.REACT_APP_API_URL ||
@@ -17,32 +161,35 @@ function Library() {
     try {
       const saved = localStorage.getItem("novaActiveProject");
 
-      if (!saved) return null;
+      if (saved) {
+        const project = JSON.parse(saved);
 
-      const project = JSON.parse(saved);
+        if (
+          project?.files?.["index.html"] &&
+          !project.files["index.html"].includes("anaya-shell-v3")
+        ) {
+          project.files["index.html"] = buildProjectHtml(
+            project.name,
+            project.files["index.html"]
+          );
+        }
 
-      if (
-        project?.files?.["index.html"] &&
-        !project.files["index.html"].includes("anaya-shell-v3")
-      ) {
-        project.files["index.html"] = buildProjectHtml(
-          project.name,
-          project.files["index.html"]
-        );
+        return project;
       }
 
-      return project;
+      const seeded = createSeedProjects();
+      return seeded[0];
     } catch {
-      return null;
+      return createSeedProjects()[0];
     }
   });
 
   const [projects, setProjects] = useState(() => {
     try {
       const saved = localStorage.getItem("novaProjects");
-      return saved ? JSON.parse(saved) : [];
+      return saved ? JSON.parse(saved) : createSeedProjects();
     } catch {
-      return [];
+      return createSeedProjects();
     }
   });
 
@@ -84,6 +231,8 @@ function Library() {
     useState("Default memory");
 
   const [search, setSearch] = useState("");
+
+  const [aiIdea, setAiIdea] = useState("");
 
   const [projectToDelete, setProjectToDelete] =
     useState(null);
@@ -133,9 +282,22 @@ function Library() {
   // CREATE PROJECT
   // ==========================================
 
-  const createProject = () => {
-    const name = projectName.trim();
-    const prompt = initialPrompt.trim();
+  const createProject = (promptOverride = null) => {
+    const hasPromptOverride =
+      typeof promptOverride === "string";
+    const prompt = (
+      hasPromptOverride
+        ? promptOverride
+        : initialPrompt
+    ).trim();
+    const generatedName = prompt
+      .replace(/^(create|build|make|design)\s+/i, "")
+      .replace(/[.!?].*$/, "")
+      .trim()
+      .slice(0, 56);
+    const name = hasPromptOverride
+      ? generatedName || "AI Project"
+      : projectName.trim();
 
     if (!name) return;
 
@@ -227,6 +389,13 @@ A responsive project created with Nova AI.
 
     return result;
   }, [projects, activeTab, search]);
+
+  const submitAiIdea = (event) => {
+    event.preventDefault();
+    if (!aiIdea.trim() || aiLoading) return;
+    createProject(aiIdea);
+    setAiIdea("");
+  };
 
   // ==========================================
   // OPEN PROJECT
@@ -546,12 +715,18 @@ A responsive project created with Nova AI.
         error
       );
 
+      const isBackendUnavailable =
+        /failed to fetch|networkerror|fetch failed/i.test(
+          error.message || ""
+        );
+      const errorMessage = isBackendUnavailable
+        ? `Cannot reach the Nova AI backend at ${API_URL || window.location.origin}. Start the app with "npm run dev" from the project folder, then try again.`
+        : error.message;
+
       setAiReply(
         `❌ Nova AI could not update the project.
 
-${error.message}
-
-Make sure your Nova AI backend is running on ${API_URL}.`
+${errorMessage}`
       );
     } finally {
       setAiLoading(false);
@@ -827,61 +1002,79 @@ Make sure your Nova AI backend is running on ${API_URL}.`
   return (
     <div className="library-page">
 
-      {/* HEADER */}
-
-      <div className="library-header">
-
+      <header className="library-header">
         <div className="library-title">
-
-          <h1>
-            Projects
-          </h1>
-
-          <p>
-            Organize your chats,
-            files and memories.
-          </p>
-
+          <span className="library-eyebrow"><FiLayers /> YOUR WORKSPACE</span>
+          <h1>Project library</h1>
+          <p>One home for everything you are building with Nova.</p>
         </div>
+        <button
+          type="button"
+          className="new-project-button"
+          onClick={openCreateModal}
+        >
+          <FiPlus /> <span>New project</span>
+        </button>
+      </header>
 
-        <div className="library-actions">
-
-          <div className="search-box">
-
-            <span>
-              🔍
-            </span>
-
-            <input
-              type="text"
-              placeholder="Search projects"
-              value={search}
-              onChange={(e) =>
-                setSearch(
-                  e.target.value
-                )
-              }
-            />
-
-          </div>
-
-          <button
-            type="button"
-            className="new-project-button"
-            onClick={
-              openCreateModal
-            }
-          >
-            + New
+      <section className="library-ai-builder" aria-labelledby="library-ai-title">
+        <div className="ai-builder-copy">
+          <span className="ai-builder-kicker"><FiZap /> NOVA AI BUILDER</span>
+          <h2 id="library-ai-title">What are we making today?</h2>
+          <p>Describe an idea. Nova will turn it into a working project you can keep refining.</p>
+        </div>
+        <form className="ai-idea-form" onSubmit={submitAiIdea}>
+          <label className="visually-hidden" htmlFor="library-ai-idea">Describe what Nova should build</label>
+          <textarea
+            id="library-ai-idea"
+            value={aiIdea}
+            onChange={(event) => setAiIdea(event.target.value)}
+            placeholder="A calm budgeting app with monthly charts and spending categories..."
+            rows={2}
+          />
+          <button type="submit" disabled={!aiIdea.trim() || aiLoading}>
+            <FiStar /> <span>Build with AI</span> <FiArrowUpRight />
           </button>
-
+        </form>
+        <div className="ai-idea-examples" aria-label="Example ideas">
+          <span>Try</span>
+          {[
+            "Portfolio for a photographer",
+            "Meal planner for busy weeks",
+            "Landing page for a coffee shop",
+          ].map((idea) => (
+            <button key={idea} type="button" onClick={() => setAiIdea(idea)}>
+              {idea}
+            </button>
+          ))}
         </div>
+      </section>
 
+      <div className="library-section-heading">
+        <div>
+          <h2>Your projects</h2>
+          <span>{projects.length} {projects.length === 1 ? "project" : "projects"}</span>
+        </div>
+        <label className="search-box">
+          <FiSearch aria-hidden="true" />
+          <input
+            type="search"
+            aria-label="Search projects"
+            placeholder="Search projects"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          {search && (
+            <button type="button" className="clear-search" onClick={() => setSearch("")} aria-label="Clear search">
+              ×
+            </button>
+          )}
+        </label>
       </div>
 
       {/* TABS */}
 
-      <div className="library-tabs">
+      <div className="library-tabs" role="tablist" aria-label="Filter projects">
 
         <button
           type="button"
@@ -890,6 +1083,8 @@ Make sure your Nova AI backend is running on ${API_URL}.`
               ? "library-tab active"
               : "library-tab"
           }
+          role="tab"
+          aria-selected={activeTab === "all"}
           onClick={() =>
             setActiveTab("all")
           }
@@ -904,6 +1099,8 @@ Make sure your Nova AI backend is running on ${API_URL}.`
               ? "library-tab active"
               : "library-tab"
           }
+          role="tab"
+          aria-selected={activeTab === "created"}
           onClick={() =>
             setActiveTab("created")
           }
@@ -918,6 +1115,8 @@ Make sure your Nova AI backend is running on ${API_URL}.`
               ? "library-tab active"
               : "library-tab"
           }
+          role="tab"
+          aria-selected={activeTab === "shared"}
           onClick={() =>
             setActiveTab("shared")
           }
@@ -932,11 +1131,11 @@ Make sure your Nova AI backend is running on ${API_URL}.`
       <div className="project-header">
 
         <span>
-          Name
+          PROJECT
         </span>
 
         <span>
-          Modified
+          LAST UPDATED
         </span>
 
       </div>
@@ -949,27 +1148,24 @@ Make sure your Nova AI backend is running on ${API_URL}.`
 
           <div className="empty-projects">
 
-            <div className="empty-folder">
-              📁
-            </div>
+            <div className="empty-folder"><FiFolder /></div>
 
             <h2>
-              No projects yet
+              {search ? "No matching projects" : activeTab === "shared" ? "Nothing shared yet" : "Your workspace starts here"}
             </h2>
 
             <p>
-              Create your first
-              project to get started.
+              {search
+                ? `No projects match “${search}”. Try another search.`
+                : "Start with an idea and let Nova AI help you shape it into something real."}
             </p>
 
             <button
               type="button"
               className="create-project-button"
-              onClick={
-                openCreateModal
-              }
+              onClick={search ? () => setSearch("") : openCreateModal}
             >
-              + Create project
+              {search ? "Clear search" : <><FiPlus /> Create a project</>}
             </button>
 
           </div>
@@ -998,19 +1194,23 @@ Make sure your Nova AI backend is running on ${API_URL}.`
 
                     <div className="project-info">
 
-                      <div className="folder-icon">
-                        📁
-                      </div>
+                      <div className="folder-icon"><FiFolder /></div>
 
-                      <div>
+                      <div className="project-meta">
 
                         <strong>
                           {project.name}
                         </strong>
 
-                        <small>
+                        <small className="project-type">
                           {project.type}
                         </small>
+
+                        {project.description && (
+                          <small className="project-description">
+                            {project.description}
+                          </small>
+                        )}
 
                       </div>
 
@@ -1033,7 +1233,7 @@ Make sure your Nova AI backend is running on ${API_URL}.`
                       )
                     }
                   >
-                    🗑
+                    <FiTrash2 />
                   </button>
 
                 </div>
