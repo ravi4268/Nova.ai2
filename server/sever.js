@@ -16,10 +16,11 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const GEMINI_TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || "gemini-2.0-flash";
 const GEMINI_IMAGE_MODEL =
   process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
 
 const GeminiModelEndpoint =
   "https://generativelanguage.googleapis.com/v1beta/models";
-
 const QUICK_PROMPTS = [
   {
     id: "explain-topic",
@@ -226,73 +227,6 @@ function findText(data) {
   return "";
 }
 
-function buildFallbackSvg(prompt = "AI artwork") {
-  const cleanPrompt = String(prompt || "AI artwork")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .slice(0, 120);
-
-  const palette = ["#ff7f50", "#ffd166", "#06d6a0", "#118ab2", "#ef476f", "#9b5de5"];
-  const bgA = palette[Math.floor(Math.random() * palette.length)];
-  const bgB = palette[Math.floor(Math.random() * palette.length)];
-  const accent = palette[Math.floor(Math.random() * palette.length)];
-
-  return `
-    <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-      <defs>
-        <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0%" stop-color="${bgA}" />
-          <stop offset="100%" stop-color="${bgB}" />
-        </linearGradient>
-      </defs>
-      <rect width="1024" height="1024" fill="url(#bg)" />
-      <circle cx="820" cy="170" r="150" fill="${accent}" opacity="0.5" />
-      <circle cx="230" cy="830" r="180" fill="#ffffff" opacity="0.12" />
-      <path d="M90 740 C 260 590, 430 640, 580 520 S 840 430, 930 620 L 930 1024 L 90 1024 Z"
-            fill="#000000" opacity="0.14" />
-      <text x="512" y="470"
-            text-anchor="middle"
-            font-family="Segoe UI, Arial, sans-serif"
-            font-weight="700"
-            font-size="54"
-            fill="#ffffff">${cleanPrompt}</text>
-      <text x="512" y="560"
-            text-anchor="middle"
-            font-family="Segoe UI, Arial, sans-serif"
-            font-size="28"
-            fill="#f5f5f5">Free fallback artwork</text>
-      <rect x="260" y="620" width="500" height="150" rx="24"
-            fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.35)" />
-      <text x="512" y="705"
-            text-anchor="middle"
-            font-family="Segoe UI, Arial, sans-serif"
-            font-size="22"
-            fill="#ffffff">Download enabled • No billing required</text>
-    </svg>
-  `;
-}
-
-function preserveUploadedImage(imageFile) {
-  if (!imageFile || !fs.existsSync(imageFile.path)) {
-    return null;
-  }
-
-  const extension = path.extname(imageFile.originalname) || ".png";
-  const fallbackName = `uploaded-preserved-${Date.now()}-${crypto
-    .randomBytes(6)
-    .toString("hex")}${extension}`;
-  const fallbackPath = path.join(uploadDir, fallbackName);
-
-  fs.copyFileSync(imageFile.path, fallbackPath);
-
-  return {
-    filename: fallbackName,
-    mimeType: imageFile.mimetype || "image/png",
-    path: fallbackPath,
-  };
-}
-
 async function callGemini(
   model,
   contents,
@@ -483,77 +417,208 @@ async function convertImageWithAI(imageInput, userPrompt) {
       : `${prompt}\nGenerate an image. Do not only describe it.`,
   });
 
-  try {
-    if (!GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY missing in server/.env");
+  let generatedImage;
+  const providerErrors = [];
+
+  if (!generatedImage && GEMINI_API_KEY) {
+    try {
+      const data = await callGemini(
+        GEMINI_IMAGE_MODEL,
+        [
+          {
+            role: "user",
+            parts: input,
+          },
+        ],
+        { responseModalities: ["TEXT", "IMAGE"] }
+      );
+      generatedImage = findImage(data);
+
+      if (!generatedImage?.data) {
+        console.error("Gemini image response:", JSON.stringify(data, null, 2));
+        throw new Error("Gemini response did not include an image.");
+      }
+    } catch (error) {
+      const message = error.message || "Unknown Gemini image error.";
+      providerErrors.push(
+        /quota|billing|limit:\s*0|resource[_ ]exhausted/i.test(message)
+          ? "Gemini image quota is exhausted. Check Google AI billing/limits or wait for the quota reset."
+          : `Gemini image generation failed: ${message}`
+      );
+      console.warn("Gemini image generation failed:", message);
     }
+  }
 
-    const data = await callGemini(GEMINI_IMAGE_MODEL, [
-      {
-        role: "user",
-        parts: input,
-      },
-    ]);
-    const generatedImage = findImage(data);
-
-    if (!generatedImage?.data) {
-      console.error("Gemini image response:", JSON.stringify(data, null, 2));
-      throw new Error("Gemini response did not include an image.");
-    }
-
-    const base64 = generatedImage.data.includes("base64,")
-      ? generatedImage.data.split("base64,").pop()
-      : generatedImage.data;
-
-    const imageBuffer = Buffer.from(base64, "base64");
-    if (!imageBuffer.length) {
-      throw new Error("Generated image data is empty.");
-    }
-
-    const extension =
-      generatedImage.mimeType?.includes("jpeg") ||
-      generatedImage.mimeType?.includes("jpg")
-        ? "jpg"
-        : "png";
-
-    const filename = `nova-ai-${Date.now()}-${crypto
-      .randomBytes(6)
-      .toString("hex")}.${extension}`;
-    const imagePath = path.join(uploadDir, filename);
-
-    fs.writeFileSync(imagePath, imageBuffer);
-
-    return {
-      filename,
-      mimeType: generatedImage.mimeType || "image/png",
-      path: imagePath,
+  if (!generatedImage && OPENAI_API_KEY) {
+    const endpoint = imageFiles.length ? "edits" : "generations";
+    const body = {
+      model: OPENAI_IMAGE_MODEL,
+      prompt: imageFiles.length
+        ? `${prompt}\nEdit the provided image${imageFiles.length > 1 ? "s" : ""} as requested.`
+        : `${prompt}\nGenerate an image.`,
+      size: "1024x1024",
+      quality: "medium",
+      output_format: "png",
     };
-  } catch (error) {
-    const msg = String(error?.message || error || "");
 
     if (imageFiles.length) {
-      const preserved = preserveUploadedImage(imageFiles[0]);
-      if (preserved) {
-        return preserved;
+      body.images = imageFiles.map((imageFile) => {
+        if (!["image/jpeg", "image/png", "image/webp"].includes(imageFile.mimetype)) {
+          throw new Error(
+            "OpenAI image editing supports JPEG, PNG, and WebP uploads."
+          );
+        }
+
+        const imageData = fs.readFileSync(imageFile.path).toString("base64");
+        return {
+          image_url: `data:${imageFile.mimetype};base64,${imageData}`,
+        };
+      });
+    }
+
+    try {
+    const response = await fetch(
+      `https://api.openai.com/v1/images/${endpoint}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(120000),
+      }
+    );
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const message =
+        data?.error?.message ||
+        `OpenAI image API returned HTTP ${response.status}`;
+      const errorMessage =
+        /invalidated|revoked|invalid api key|incorrect api key/i.test(message)
+          ? "API key is invalidated. Replace OPENAI_API_KEY in server/.env with an active key."
+          : message;
+      providerErrors.push(`OpenAI image generation failed: ${errorMessage}`);
+      console.warn("OpenAI image generation failed:", errorMessage);
+    } else {
+      generatedImage = data?.data?.[0]?.b64_json
+        ? {
+            data: data.data[0].b64_json,
+            mimeType: `image/${data.output_format || "png"}`,
+          }
+        : null;
+
+      if (!generatedImage?.data) {
+        throw new Error("OpenAI image response did not include an image.");
       }
     }
-
-    if (/rate.?limit|quota|free tier|limit:\s*0|429/i.test(msg)) {
-      const svg = buildFallbackSvg(prompt);
-      const filename = `nova-ai-fallback-${Date.now()}.svg`;
-      const imagePath = path.join(uploadDir, filename);
-
-      fs.writeFileSync(imagePath, svg, "utf8");
-
-      return {
-        filename,
-        mimeType: "image/svg+xml",
-        path: imagePath,
-      };
+    } catch (error) {
+      const message = error.message || "Unknown OpenAI image error.";
+      providerErrors.push(`OpenAI image generation failed: ${message}`);
+      console.warn("OpenAI image generation failed:", message);
     }
-
-    throw error;
   }
+
+  if (!generatedImage && !imageFiles.length) {
+    try {
+      const imageUrl = new URL(
+        `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`
+      );
+      imageUrl.searchParams.set("width", "768");
+      imageUrl.searchParams.set("height", "768");
+      imageUrl.searchParams.set("nologo", "true");
+
+      const response = await fetch(imageUrl, {
+        signal: AbortSignal.timeout(120000),
+      });
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        let reason = "";
+
+        try {
+          const responseData = JSON.parse(responseText);
+          reason =
+            responseData?.error?.message ||
+            responseData?.message ||
+            responseData?.error ||
+            "";
+        } catch {
+          reason = responseText;
+        }
+
+        reason = String(reason).replace(/\s+/g, " ").trim().slice(0, 220);
+        throw new Error(
+          `Public image service returned ${reason || `HTTP ${response.status}`}.`
+        );
+      }
+
+      const mimeType = (response.headers.get("content-type") || "")
+        .split(";")[0]
+        .trim()
+        .toLowerCase();
+
+      if (!["image/png", "image/jpeg", "image/webp"].includes(mimeType)) {
+        throw new Error(
+          "Public image service did not return a supported image."
+        );
+      }
+
+      const imageBuffer = Buffer.from(await response.arrayBuffer());
+      if (!imageBuffer.length) {
+        throw new Error("Public image service returned an empty image.");
+      }
+
+      generatedImage = {
+        data: imageBuffer.toString("base64"),
+        mimeType,
+      };
+    } catch (error) {
+      const message = error.message || "Unknown fallback image error.";
+      providerErrors.push(`Backup image generation failed: ${message}`);
+      console.warn("Backup image generation failed:", message);
+    }
+  }
+
+  if (!generatedImage) {
+    const generationError = new Error(
+      providerErrors.length
+        ? `Image generation is temporarily unavailable. ${providerErrors.join(" ")}`
+        : "AI image generation is unavailable. Configure an image provider and try again."
+    );
+    generationError.status = 503;
+    throw generationError;
+  }
+
+  const base64 = generatedImage.data.includes("base64,")
+    ? generatedImage.data.split("base64,").pop()
+    : generatedImage.data;
+  const imageBuffer = Buffer.from(base64, "base64");
+  if (!imageBuffer.length) {
+    throw new Error("Generated image data is empty.");
+  }
+
+  const extension =
+    generatedImage.mimeType?.includes("jpeg") ||
+    generatedImage.mimeType?.includes("jpg")
+      ? "jpg"
+      : generatedImage.mimeType?.includes("webp")
+        ? "webp"
+        : "png";
+
+  const filename = `nova-ai-${Date.now()}-${crypto
+    .randomBytes(6)
+    .toString("hex")}.${extension}`;
+  const imagePath = path.join(uploadDir, filename);
+
+  fs.writeFileSync(imagePath, imageBuffer);
+
+  return {
+    filename,
+    mimeType: generatedImage.mimeType || "image/png",
+    path: imagePath,
+  };
 }
 
 app.get("/", (_req, res) => {
@@ -645,7 +710,14 @@ app.post("/api/images/generate", upload.array("image", 4), async (req, res) => {
       .send(fs.readFileSync(generated.path));
   } catch (error) {
     console.error("Image generation error:", error);
-    return res.status(500).json({
+    const status =
+      Number.isInteger(error.status) && error.status >= 400 && error.status < 600
+        ? error.status
+        : /GEMINI_API_KEY missing/i.test(error.message)
+          ? 503
+          : 500;
+
+    return res.status(status).json({
       success: false,
       message: error.message || "Image generation failed.",
     });

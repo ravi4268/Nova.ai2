@@ -2,300 +2,183 @@ import React, { useEffect, useRef, useState } from "react";
 import "./Images.css";
 
 const API_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:5000";
+  process.env.REACT_APP_API_URL ||
+  (process.env.NODE_ENV === "production" ? "" : "http://localhost:5000");
 
-const suggestions = [
+const IMAGE_IDEAS = [
   {
-    title: "Caricature",
-    prompt: "Create a colorful cartoon caricature with a modern AI art style",
-    image:
-      "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=1000&q=90",
+    title: "Nature escape",
+    icon: "🌿",
+    description: "Green forests, mountains, and soft sunlight",
+    prompt:
+      "Create a photorealistic nature landscape with lush green forest, distant mountains, wildflowers, and warm golden-hour sunlight.",
   },
   {
-    title: "Futuristic AI",
-    prompt: "Create a futuristic AI robot in a neon-lit modern city",
-    image:
-      "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1000&q=90",
+    title: "Tropical beach",
+    icon: "🏖️",
+    description: "A peaceful beach beneath a glowing sunset",
+    prompt:
+      "Create a photorealistic tropical beach with soft white sand, clear turquoise water, palm trees, and a beautiful warm sunset.",
   },
   {
-    title: "Anime",
-    prompt: "Create a high quality anime character under a beautiful blue sky",
-    image:
-      "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=1000&q=90",
-  },
-  {
-    title: "Sunset",
-    prompt: "Create a cinematic sunset over mountains with dramatic lighting",
-    image:
-      "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1000&q=90",
-  },
-  {
-    title: "Ocean",
-    prompt: "Create a peaceful ocean beach under a cinematic blue sky",
-    image:
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=90",
-  },
-  {
-    title: "Flowers",
-    prompt: "Create a colorful flower arrangement in a dark artistic style",
-    image:
-      "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1000&q=90",
-  },
-  {
-    title: "Mountain",
-    prompt: "Create a majestic mountain landscape with cinematic lighting",
-    image:
-      "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=1000&q=90",
-  },
-  {
-    title: "Cyber City",
-    prompt: "Create a futuristic cyberpunk city with neon lights at night",
-    image:
-      "https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=1000&q=90",
-  },
-  {
-    title: "Space",
-    prompt: "Create a cinematic space scene with planets and stars",
-    image:
-      "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?auto=format&fit=crop&w=1000&q=90",
-  },
-  {
-    title: "Architecture",
-    prompt: "Create a modern luxury architectural building",
-    image:
-      "https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&w=1000&q=90",
-  },
-  {
-    title: "Portrait",
-    prompt: "Create an artistic portrait with professional studio lighting",
-    image:
-      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=1000&q=90",
-  },
-  {
-    title: "Travel",
-    prompt: "Create a beautiful luxury travel destination with mountains",
-    image:
-      "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1000&q=90",
+    title: "Ocean waves",
+    icon: "🌊",
+    description: "Deep blue ocean and dramatic rolling waves",
+    prompt:
+      "Create a cinematic photorealistic ocean scene with deep blue water, dramatic rolling waves, sea spray, and a glowing horizon.",
   },
 ];
 
 function Images() {
-  const [prompt, setPrompt] = useState("");
-  const [generatedImage, setGeneratedImage] = useState("");
-  const [attachedImages, setAttachedImages] = useState([]);
-  const [userUploadedImages, setUserUploadedImages] = useState([]);
-  const [attachedPreviews, setAttachedPreviews] = useState([]);
-  const [selectedSuggestionTitle, setSelectedSuggestionTitle] = useState("");
+  const [prompt, setPrompt] = useState(
+    "Create a beautiful nature landscape with mountains, a lake, green forest, and soft natural light."
+  );
+  const [generatedImages, setGeneratedImages] = useState([]);
+  const [imageCount, setImageCount] = useState(1);
+  const [generationProgress, setGenerationProgress] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState("");
-
-  const fileInputRef = useRef(null);
-  const suggestionsRef = useRef(null);
-
-  useEffect(() => {
-    if (!attachedImages.length) {
-      setAttachedPreviews([]);
-      return undefined;
-    }
-
-    const previewUrls = attachedImages.map((image) => URL.createObjectURL(image));
-    setAttachedPreviews(previewUrls);
-
-    return () => previewUrls.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
-  }, [attachedImages]);
+  const imageUrls = useRef(new Set());
 
   useEffect(() => {
     return () => {
-      if (generatedImage.startsWith("blob:")) {
-        URL.revokeObjectURL(generatedImage);
-      }
+      imageUrls.current.forEach((imageUrl) => URL.revokeObjectURL(imageUrl));
     };
-  }, [generatedImage]);
+  }, []);
 
-  const handleAttach = (event) => {
-    const files = Array.from(event.target.files || []);
-    if (!files.length) return;
-
-    if (files.length > 4) {
-      setError("Select up to 4 images at a time.");
-      event.target.value = "";
-      return;
+  useEffect(() => {
+    if (generatedImages.length && !loading) {
+      document
+        .querySelector(".generated-section")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  }, [generatedImages.length, loading]);
 
-    if (files.some((file) => !file.type.startsWith("image/"))) {
-      setError("Please select an image file.");
-      event.target.value = "";
-      return;
-    }
-
-    if (files.some((file) => file.size > 20 * 1024 * 1024)) {
-      setError("Each image must be less than 20MB.");
-      event.target.value = "";
-      return;
-    }
-
-    setError("");
-    setAttachedImages(files);
-    setUserUploadedImages(files);
-    setSelectedSuggestionTitle("");
-    setGeneratedImage("");
+  const clearGeneratedImages = () => {
+    imageUrls.current.forEach((imageUrl) => URL.revokeObjectURL(imageUrl));
+    imageUrls.current.clear();
+    setGeneratedImages([]);
   };
 
-  const removeAttachment = () => {
-    setAttachedImages([]);
-    setUserUploadedImages([]);
-    setSelectedSuggestionTitle("");
-    setError("");
+  const downloadImage = (image) => {
+    if (!image?.url) return;
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const startVoiceInput = () => {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      setError("Voice input is not supported. Please use Google Chrome.");
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => {
-      setIsListening(false);
-      setError("Voice input failed. Please try again.");
-    };
-
-    recognition.onresult = (event) => {
-      const voiceText = event.results?.[0]?.[0]?.transcript;
-
-      if (voiceText) {
-        setPrompt((previous) =>
-          previous ? `${previous} ${voiceText}` : voiceText
-        );
-      }
-    };
-
-    try {
-      recognition.start();
-    } catch (voiceError) {
-      console.error("Voice input error:", voiceError);
-      setIsListening(false);
-      setError("Could not start voice input.");
-    }
-  };
-
-  const downloadImage = (imageUrl = generatedImage, mimeType = "image/png") => {
-    if (!imageUrl) return;
-
-    const extension = mimeType.includes("jpeg")
+    const extension = image.mimeType.includes("jpeg")
       ? "jpg"
-      : mimeType.includes("webp")
+      : image.mimeType.includes("webp")
         ? "webp"
         : "png";
 
     const link = document.createElement("a");
-    link.href = imageUrl;
-    link.download = `nova-ai-image-${Date.now()}.${extension}`;
+    link.href = image.url;
+    link.download = `nova-ai-image-${image.index + 1}-${Date.now()}.${extension}`;
     document.body.appendChild(link);
     link.click();
     link.remove();
   };
 
-  const generateImage = async (
-    overridePrompt = prompt,
-    overrideImages = userUploadedImages
-  ) => {
+  const generateImage = async (overridePrompt = prompt) => {
     if (loading) return;
 
     const nextPrompt = String(overridePrompt || "").trim();
-    const nextImages = Array.isArray(overrideImages)
-      ? overrideImages
-      : overrideImages
-        ? [overrideImages]
-        : attachedImages;
 
-    if (!nextPrompt && !nextImages.length) {
-      setError("Write a prompt or upload an image first.");
-      return;
-    }
-
-    if (nextImages.length && !nextPrompt) {
-      setError("Describe how you want AI to transform the uploaded image.");
+    if (!nextPrompt) {
+      setError("Write a prompt first.");
       return;
     }
 
     setLoading(true);
     setError("");
-    setGeneratedImage("");
+    clearGeneratedImages();
+    setGenerationProgress(0);
 
     try {
-      const formData = new FormData();
+      const results = new Array(imageCount);
+      const failures = [];
+      let nextIndex = 0;
 
-      if (nextPrompt) {
-        formData.append("prompt", nextPrompt);
-      }
+      const generateNextImage = async () => {
+        while (nextIndex < imageCount) {
+          const index = nextIndex;
+          nextIndex += 1;
 
-      nextImages.forEach((image) => formData.append("image", image));
+          try {
+            const formData = new FormData();
+            formData.append("prompt", nextPrompt);
 
-      const response = await fetch(
-        `${API_URL.replace(/\/$/, "")}/api/images/generate`,
-        {
-          method: "POST",
-          body: formData,
+            const response = await fetch(
+              `${API_URL.replace(/\/$/, "")}/api/images/generate`,
+              {
+                method: "POST",
+                body: formData,
+              }
+            );
+
+            if (!response.ok) {
+              const responseText = await response.text();
+              let message = responseText;
+
+              try {
+                const responseData = JSON.parse(responseText);
+                message =
+                  responseData.message ||
+                  responseData.error ||
+                  responseText;
+              } catch {
+                // Keep the response text when it is not JSON.
+              }
+
+              throw new Error(
+                message || `Image request failed (${response.status}).`
+              );
+            }
+
+            const imageBlob = await response.blob();
+
+            if (!imageBlob.size || !imageBlob.type.startsWith("image/")) {
+              throw new Error("The server response did not contain a valid image.");
+            }
+
+            const imageUrl = URL.createObjectURL(imageBlob);
+            imageUrls.current.add(imageUrl);
+            results[index] = {
+              url: imageUrl,
+              mimeType: imageBlob.type,
+              index,
+            };
+            setGeneratedImages(results.filter(Boolean));
+          } catch (generationError) {
+            console.error(`Image ${index + 1} generation error:`, generationError);
+            failures.push(generationError);
+          } finally {
+            setGenerationProgress((progress) => progress + 1);
+          }
         }
+      };
+
+      await Promise.all(
+        Array.from(
+          { length: Math.min(imageCount, 2) },
+          () => generateNextImage()
+        )
       );
 
-      if (!response.ok) {
-        const responseText = await response.text();
-        let message = responseText;
+      const completedImages = results.filter(Boolean);
+      if (completedImages.length === 0) {
+        throw failures[0] || new Error("Could not create the images. Please try again.");
+      }
 
-        try {
-          const responseData = JSON.parse(responseText);
-          message =
-            responseData.message ||
-            responseData.error ||
-            responseText;
-        } catch {
-          // Keep the response text when it is not JSON.
-        }
-
-        const isQuotaError =
-          response.status === 429 ||
-          /rate.?limit|quota|free tier|limit:\s*0/i.test(message);
-
-        if (isQuotaError) {
-          throw new Error(
-            "Gemini image generation is unavailable on this model's current tier. Enable billing or choose an image model available to your Google AI Studio project."
-          );
-        }
-
-        throw new Error(
-          message || `Image request failed (${response.status}).`
+      if (failures.length) {
+        setError(
+          `${failures.length} of ${imageCount} images could not be created. ${failures[0].message}`
         );
       }
-
-      const imageBlob = await response.blob();
-
-      if (!imageBlob.size || !imageBlob.type.startsWith("image/")) {
-        throw new Error("The server response did not contain a valid image.");
-      }
-
-      const imageUrl = URL.createObjectURL(imageBlob);
-      setGeneratedImage(imageUrl);
     } catch (generationError) {
       console.error("Image generation error:", generationError);
       setError(
-        generationError.message ||
-          "Image generation failed. Check that the backend is running."
+        generationError instanceof TypeError
+          ? "Could not connect to the image server. Please check that the server is running and try again."
+          : generationError.message || "Could not create the image. Please try again."
       );
     } finally {
       setLoading(false);
@@ -312,270 +195,138 @@ function Images() {
     }
   };
 
-  const selectSuggestion = async (item) => {
-    if (loading) return;
-
-    setError("");
-
-    try {
-      let sourceImages = userUploadedImages;
-
-      if (!sourceImages.length) {
-        const response = await fetch(item.image);
-        if (!response.ok) {
-          throw new Error("Could not load the selected sample image.");
-        }
-
-        const imageBlob = await response.blob();
-        if (!imageBlob.type.startsWith("image/")) {
-          throw new Error("The selected sample is not a valid image.");
-        }
-
-        const extension = imageBlob.type.split("/")[1] || "jpg";
-        sourceImages = [new File(
-          [imageBlob],
-          `nova-sample-${Date.now()}.${extension}`,
-          { type: imageBlob.type }
-        )];
-      }
-
-      setAttachedImages(sourceImages);
-      setSelectedSuggestionTitle(item.title);
-      setPrompt(item.prompt);
-      setGeneratedImage("");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      generateImage(item.prompt, sourceImages);
-    } catch (selectionError) {
-      console.error("Sample image selection error:", selectionError);
-      setError(selectionError.message || "Could not load the selected image.");
-    }
-  };
-
-  const scrollSuggestions = (direction) => {
-    suggestionsRef.current?.scrollBy({
-      left: direction === "left" ? -360 : 360,
-      behavior: "smooth",
-    });
-  };
-
   return (
     <main className="images-page">
       <header className="images-header">
         <div className="images-heading">
-          <h1>Images</h1>
-          <p>Create beautiful images with Nova AI</p>
-        </div>
-
-        <div className="image-ai-badge">
-          <span>✨</span>
-          <span>Nova AI</span>
+          <h1>AI Image Generator</h1>
         </div>
       </header>
 
       <section className="image-generator">
-        {attachedImages.length > 0 && (
-          <div className="attached-image">
-            <div className="attached-left">
-              <div className="attached-previews">
-                {attachedPreviews.map((previewUrl, index) => (
-                  <img
-                    key={previewUrl}
-                    src={previewUrl}
-                    alt={`Uploaded image ${index + 1}`}
-                  />
-                ))}
-              </div>
-              <div>
-                <strong>
-                  {attachedImages.length === 1
-                    ? attachedImages[0].name
-                    : `${attachedImages.length} images selected`}
-                </strong>
-                <small>Images will be combined by AI</small>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={removeAttachment}
-              aria-label="Remove uploaded image"
-            >
-              ×
-            </button>
-          </div>
-        )}
-
         <div className="image-prompt-wrapper">
-          <button
-            type="button"
-            className="image-attach"
-            title="Upload image"
-            aria-label="Upload image"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            📎
-          </button>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            hidden
-            onChange={handleAttach}
-          />
-
           <input
             type="text"
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={
-              attachedImages.length
-                ? "Describe how to combine or transform these images..."
-                : "Describe a new image..."
-            }
+            placeholder="Describe an image to create..."
             aria-label="Image prompt"
             disabled={loading}
           />
 
           <button
             type="button"
-            className={`image-mic ${isListening ? "listening" : ""}`}
-            title={isListening ? "Listening..." : "Voice input"}
-            onClick={startVoiceInput}
-            disabled={loading}
-          >
-            {isListening ? "🔴" : "🎙️"}
-          </button>
-
-          <button
-            type="button"
             className="generate-image-button"
-            onClick={() => generateImage(prompt, attachedImages)}
+            onClick={() => generateImage(prompt)}
             disabled={loading}
-            title={attachedImages.length ? "Transform uploaded images" : "Generate image"}
+            aria-label={loading ? "Generating image" : "Generate image"}
+            title="Generate image"
           >
-            {loading ? "✨" : "➤"}
+            {loading ? "Creating..." : "Generate"}
           </button>
         </div>
 
-        <div className="image-prompt-note">
-          ✨ Describe an image, or upload one for AI transformation
+        <div className="image-generation-options">
+          <p>Generate multiple AI variations and download each one.</p>
+          <label htmlFor="image-count">
+            Images
+            <select
+              id="image-count"
+              value={imageCount}
+              onChange={(event) => setImageCount(Number(event.target.value))}
+              disabled={loading}
+            >
+              {[1, 2, 3, 4].map((count) => (
+                <option key={count} value={count}>
+                  {count}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
-        {error && (
-          <p className="image-error" role="alert">
-            {error}
-          </p>
-        )}
+        {error && <p className="image-error" role="alert">{error}</p>}
       </section>
 
-      {loading && (
-        <div className="image-loading">
-          <div className="loading-spinner">✨</div>
-          <h3>Nova AI is creating your image...</h3>
-          <p>Please wait a moment</p>
-        </div>
-      )}
-
-      {generatedImage && !loading && (
-        <section className="generated-section">
-          <div className="generated-header">
-            <div>
-              <h2>Your Image</h2>
-              <p>Generated by Nova AI</p>
-            </div>
-
-            <button
-              type="button"
-              className="download-image"
-              onClick={() => downloadImage()}
-            >
-              ⬇ Download
-            </button>
-          </div>
-
-          <div className="generated-image-card">
-            <img src={generatedImage} alt="AI generated result" />
-            <div className="generated-overlay">✨ Nova AI</div>
-          </div>
-        </section>
-      )}
-
-      <section className="create-section">
-        <div className="section-title-row">
-          <h2>Create an image</h2>
-
-          <div className="image-arrows">
-            <button
-              type="button"
-              aria-label="Previous images"
-              onClick={() => scrollSuggestions("left")}
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              aria-label="Next images"
-              onClick={() => scrollSuggestions("right")}
-            >
-              ›
-            </button>
+      <section className="image-ideas" aria-labelledby="image-ideas-title">
+        <div className="image-ideas-heading">
+          <div>
+            <h2 id="image-ideas-title">Explore image ideas</h2>
+            <p>Choose a theme to generate AI images</p>
           </div>
         </div>
-
-        <div className="image-suggestions" ref={suggestionsRef}>
-          {suggestions.map((item) => (
+        <div className="image-ideas-grid">
+          {IMAGE_IDEAS.map((idea, index) => (
             <button
+              className={`image-idea-card image-idea-card-${index + 1}`}
+              key={idea.title}
               type="button"
-              className="image-card"
-              key={item.title}
-              onClick={() => selectSuggestion(item)}
+              onClick={() => {
+                setPrompt(idea.prompt);
+                generateImage(idea.prompt);
+              }}
+              disabled={loading}
+              aria-label={`Generate ${imageCount} AI images: ${idea.title}`}
             >
-              <img
-                src={
-                  item.title === selectedSuggestionTitle
-                    ? generatedImage || attachedPreviews[0] || item.image
-                    : item.image
-                }
-                alt={item.title}
-                loading="lazy"
-              />
-              <div className="image-card-overlay">
-                <span>{item.title}</span>
-                <small>✨</small>
-              </div>
+              <span className="image-idea-icon" aria-hidden="true">
+                {idea.icon}
+              </span>
+              <span className="image-idea-copy">
+                <strong>{idea.title}</strong>
+                <span>{idea.description}</span>
+              </span>
+              <span className="image-idea-action">
+                {loading ? "Creating..." : "Generate"}
+              </span>
             </button>
           ))}
         </div>
       </section>
 
-      <section className="image-features">
-        <div className="image-feature">
-          <div className="feature-icon">🎨</div>
-          <div>
-            <strong>Creative Images</strong>
-            <p>Turn your ideas into beautiful visuals.</p>
-          </div>
+      {loading && (
+        <div className="image-loading" role="status" aria-live="polite">
+          <div className="loading-spinner" aria-hidden="true" />
+          <p>
+            Creating your images... {generationProgress} of {imageCount} completed
+          </p>
         </div>
+      )}
 
-        <div className="image-feature">
-          <div className="feature-icon">⚡</div>
-          <div>
-            <strong>Fast Generation</strong>
-            <p>Generate images quickly with Nova AI.</p>
+      {generatedImages.length > 0 && (
+        <section className="generated-section">
+          <div className="generated-header">
+            <div>
+              <h2>Your AI images</h2>
+              <p>{generatedImages.length} image{generatedImages.length === 1 ? "" : "s"} generated</p>
+            </div>
           </div>
-        </div>
+          <div className="generated-image-grid">
+            {generatedImages.map((image) => (
+              <article className="generated-image-item" key={image.url}>
+                <div className="generated-image-card">
+                  <img
+                    src={image.url}
+                    alt={`AI-generated variation ${image.index + 1}`}
+                  />
+                </div>
+                <div className="generated-actions">
+                  <span>Variation {image.index + 1}</span>
+                  <button
+                    type="button"
+                    className="download-image"
+                    onClick={() => downloadImage(image)}
+                    aria-label={`Download AI-generated variation ${image.index + 1}`}
+                  >
+                    ⬇ Download
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
-        <div className="image-feature">
-          <div className="feature-icon">✨</div>
-          <div>
-            <strong>AI Powered</strong>
-            <p>Create unique images from simple prompts.</p>
-          </div>
-        </div>
-      </section>
     </main>
   );
 }
