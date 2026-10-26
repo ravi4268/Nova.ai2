@@ -18,9 +18,159 @@ const GEMINI_IMAGE_MODEL =
   process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
+const POLLINATIONS_API_KEY = process.env.POLLINATIONS_API_KEY || "";
+const POLLINATIONS_IMAGE_MODEL =
+  process.env.POLLINATIONS_IMAGE_MODEL || "black-forest-labs/flux.1-schnell";
 
 const GeminiModelEndpoint =
   "https://generativelanguage.googleapis.com/v1beta/models";
+let pollinationsQueue = Promise.resolve();
+let pollinationsNextAllowedAt = 0;
+
+const wait = (milliseconds) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+async function requestPollinationsImage(imageUrl, headers = {}) {
+  let attempt = 0;
+
+  while (attempt < 2) {
+    const response = await fetch(imageUrl, {
+      headers,
+      signal: AbortSignal.timeout(120000),
+    });
+
+    if (response.ok) {
+      const mimeType = (response.headers.get("content-type") || "")
+        .split(";")[0]
+        .trim()
+        .toLowerCase();
+
+      if (!["image/png", "image/jpeg", "image/webp"].includes(mimeType)) {
+        throw new Error("Pollinations did not return a supported image.");
+      }
+
+      const imageBuffer = Buffer.from(await response.arrayBuffer());
+      if (!imageBuffer.length) {
+        throw new Error("Pollinations returned an empty image.");
+      }
+
+      return {
+        data: imageBuffer.toString("base64"),
+        mimeType,
+      };
+    }
+
+    const responseText = await response.text();
+    let reason = "";
+
+    try {
+      const responseData = JSON.parse(responseText);
+      reason =
+        responseData?.error?.message ||
+        responseData?.message ||
+        responseData?.error ||
+        "";
+    } catch {
+      reason = responseText;
+    }
+
+    reason = String(reason).replace(/\s+/g, " ").trim().slice(0, 220);
+    const rateLimited =
+      response.status === 429 ||
+      /free limit reached|retry after/i.test(reason);
+
+    if (rateLimited && attempt === 0) {
+      const retryAfterHeader = response.headers.get("retry-after");
+      const retryAfterSeconds = Number(retryAfterHeader);
+      const retryAfterDate = Date.parse(retryAfterHeader);
+      const retryAfterMessage = reason.match(
+        /retry after\s+(\d+)\s*(?:s|seconds?)/i
+      );
+      let retryDelay = 30_000;
+
+      if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+        retryDelay = retryAfterSeconds * 1_000;
+      } else if (
+        Number.isFinite(retryAfterDate) &&
+        retryAfterDate > Date.now()
+      ) {
+        retryDelay = retryAfterDate - Date.now();
+      } else if (retryAfterMessage) {
+        retryDelay = Number(retryAfterMessage[1]) * 1_000;
+      }
+
+      retryDelay = Math.min(60_000, Math.max(1_000, retryDelay));
+      await wait(retryDelay);
+      attempt += 1;
+      continue;
+    }
+
+    throw new Error(
+      `Pollinations returned ${reason || `HTTP ${response.status}`}.`
+    );
+  }
+
+  throw new Error("Pollinations could not generate an image.");
+}
+
+async function generatePollinationsImage(prompt) {
+  let authenticatedError;
+
+  if (POLLINATIONS_API_KEY) {
+    const authenticatedUrl = new URL(
+      `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}`
+    );
+    authenticatedUrl.searchParams.set("model", POLLINATIONS_IMAGE_MODEL);
+    authenticatedUrl.searchParams.set("width", "768");
+    authenticatedUrl.searchParams.set("height", "768");
+    authenticatedUrl.searchParams.set("nologo", "true");
+
+    try {
+      return await requestPollinationsImage(authenticatedUrl, {
+        Authorization: `Bearer ${POLLINATIONS_API_KEY}`,
+      });
+    } catch (error) {
+      authenticatedError = error;
+      console.warn(
+        "Authenticated Pollinations image generation failed:",
+        error.message
+      );
+    }
+  }
+
+  const generation = pollinationsQueue.then(async () => {
+    const waitTime = Math.max(0, pollinationsNextAllowedAt - Date.now());
+    if (waitTime) {
+      await wait(waitTime);
+    }
+
+    pollinationsNextAllowedAt = Date.now() + 45_000;
+    const publicUrl = new URL(
+      `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`
+    );
+    publicUrl.searchParams.set("width", "768");
+    publicUrl.searchParams.set("height", "768");
+    publicUrl.searchParams.set("nologo", "true");
+
+    return requestPollinationsImage(publicUrl);
+  });
+
+  pollinationsQueue = generation.then(
+    () => undefined,
+    () => undefined
+  );
+
+  return generation.catch((error) => {
+    if (authenticatedError) {
+      throw new Error(
+        `Authenticated Pollinations failed: ${authenticatedError.message}. Public fallback failed: ${error.message}`
+      );
+    }
+
+    throw error;
+  });
+}
+
 const QUICK_PROMPTS = [
   {
     id: "explain-topic",
@@ -522,61 +672,18 @@ async function convertImageWithAI(imageInput, userPrompt) {
 
   if (!generatedImage && !imageFiles.length) {
     try {
-      const imageUrl = new URL(
-        `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`
-      );
-      imageUrl.searchParams.set("width", "768");
-      imageUrl.searchParams.set("height", "768");
-      imageUrl.searchParams.set("nologo", "true");
-
-      const response = await fetch(imageUrl, {
-        signal: AbortSignal.timeout(120000),
-      });
-
-      if (!response.ok) {
-        const responseText = await response.text();
-        let reason = "";
-
-        try {
-          const responseData = JSON.parse(responseText);
-          reason =
-            responseData?.error?.message ||
-            responseData?.message ||
-            responseData?.error ||
-            "";
-        } catch {
-          reason = responseText;
-        }
-
-        reason = String(reason).replace(/\s+/g, " ").trim().slice(0, 220);
-        throw new Error(
-          `Public image service returned ${reason || `HTTP ${response.status}`}.`
-        );
-      }
-
-      const mimeType = (response.headers.get("content-type") || "")
-        .split(";")[0]
-        .trim()
-        .toLowerCase();
-
-      if (!["image/png", "image/jpeg", "image/webp"].includes(mimeType)) {
-        throw new Error(
-          "Public image service did not return a supported image."
-        );
-      }
-
-      const imageBuffer = Buffer.from(await response.arrayBuffer());
-      if (!imageBuffer.length) {
-        throw new Error("Public image service returned an empty image.");
-      }
-
-      generatedImage = {
-        data: imageBuffer.toString("base64"),
-        mimeType,
-      };
+      generatedImage = await generatePollinationsImage(prompt);
     } catch (error) {
       const message = error.message || "Unknown fallback image error.";
       providerErrors.push(`Backup image generation failed: ${message}`);
+      if (
+        !POLLINATIONS_API_KEY &&
+        /429|limit|retry after/i.test(message)
+      ) {
+        providerErrors.push(
+          "The public image limit has been reached. Add a Pollinations secret key as POLLINATIONS_API_KEY in server/.env to use authenticated image generation."
+        );
+      }
       console.warn("Backup image generation failed:", message);
     }
   }

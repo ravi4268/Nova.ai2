@@ -27,6 +27,27 @@ const IMAGE_IDEAS = [
     prompt:
       "Create a cinematic photorealistic ocean scene with deep blue water, dramatic rolling waves, sea spray, and a glowing horizon.",
   },
+  {
+    title: "Flower garden",
+    icon: "🌸",
+    description: "Colorful flowers glowing in soft morning light",
+    prompt:
+      "Generate an original photorealistic AI image of a lush flower garden filled with roses, tulips, and wildflowers, soft morning light, rich natural colors, and beautiful fine details.",
+  },
+  {
+    title: "Indoor plants",
+    icon: "🪴",
+    description: "A calm room filled with beautiful green plants",
+    prompt:
+      "Generate an original photorealistic AI image of a cozy sunlit room styled with lush indoor plants including monstera, fiddle-leaf fig, and trailing pothos, warm natural light, and an inviting modern interior.",
+  },
+  {
+    title: "Botanical leaves",
+    icon: "🍃",
+    description: "Fresh tropical leaves in a peaceful greenhouse",
+    prompt:
+      "Generate an original photorealistic AI image of vibrant tropical botanical leaves with delicate water droplets in a peaceful greenhouse, soft diffused sunlight, rich greens, and crisp natural detail.",
+  },
 ];
 
 function Images() {
@@ -199,7 +220,14 @@ function Images() {
     <main className="images-page">
       <header className="images-header">
         <div className="images-heading">
-          <h1>AI Image Generator</h1>
+          <div className="images-title-row">
+            <h1>AI Image Generator</h1>
+            <span className="image-ai-badge">
+              <span aria-hidden="true">✦</span>
+              AI powered
+            </span>
+          </div>
+          <p>Turn your ideas into images with AI.</p>
         </div>
       </header>
 

@@ -1345,3 +1345,171 @@
     align-items: flex-start;
   }
 }
+
+/* Match the reference generator layout while keeping the cards responsive. */
+.images-page {
+  width: min(100%, 1320px);
+  padding: clamp(24px, 3.2vw, 40px) clamp(20px, 5.2vw, 60px) 56px;
+}
+
+.images-header,
+.image-generator,
+.image-generation-options,
+.image-ideas {
+  width: 100%;
+}
+
+.images-header {
+  margin: 0 0 22px;
+}
+
+.images-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.images-heading h1 {
+  font-size: clamp(2rem, 4.2vw, 3rem);
+  letter-spacing: -0.045em;
+}
+
+.images-heading p {
+  margin: 8px 0 0;
+  color: #9aa7bc;
+  font-size: clamp(0.9rem, 1.5vw, 1rem);
+}
+
+.image-prompt-wrapper {
+  min-height: 72px;
+  padding: 8px 12px 8px 20px;
+  border-radius: 20px;
+}
+
+.image-prompt-wrapper input[type="text"] {
+  flex: 1 1 auto;
+  height: 54px;
+  min-width: 0;
+  font-size: clamp(1rem, 1.7vw, 1.25rem);
+  text-overflow: ellipsis;
+}
+
+.generate-image-button {
+  flex: 0 0 auto;
+  min-width: 140px;
+  height: 60px;
+  border-radius: 16px;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.image-generation-options {
+  margin-top: 12px;
+  font-size: 1rem;
+}
+
+.image-ideas {
+  margin-top: 36px;
+}
+
+.image-ideas-heading {
+  margin-bottom: 16px;
+}
+
+.image-ideas-heading h2 {
+  font-size: clamp(1.4rem, 2.6vw, 2rem);
+}
+
+.image-ideas-heading p {
+  font-size: 1rem;
+}
+
+.image-ideas-grid {
+  gap: 14px;
+}
+
+.image-idea-card {
+  min-height: 180px;
+  padding: 20px;
+  border-radius: 20px;
+}
+
+.image-idea-card-4 {
+  background:
+    radial-gradient(circle at 100% 0, rgba(226, 117, 159, 0.3), transparent 48%),
+    #111b28;
+}
+
+.image-idea-card-5 {
+  background:
+    radial-gradient(circle at 100% 0, rgba(113, 178, 117, 0.3), transparent 48%),
+    #111b28;
+}
+
+.image-idea-card-6 {
+  background:
+    radial-gradient(circle at 100% 0, rgba(120, 177, 139, 0.3), transparent 48%),
+    #111b28;
+}
+
+.image-idea-icon {
+  font-size: 1.9rem;
+}
+
+.image-idea-copy strong {
+  font-size: 1.1rem;
+}
+
+.image-idea-copy > span {
+  font-size: 0.95rem;
+}
+
+.image-idea-action {
+  font-size: 0.95rem;
+}
+
+@media (max-width: 760px) {
+  .image-ideas-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .images-page {
+    padding: 24px 16px 44px;
+  }
+
+  .images-heading h1 {
+    font-size: clamp(1.8rem, 8vw, 2.25rem);
+  }
+
+  .images-title-row {
+    gap: 8px;
+  }
+
+  .image-ai-badge {
+    height: 34px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .image-prompt-wrapper {
+    min-height: 66px;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .generate-image-button {
+    min-width: 92px;
+    width: auto;
+    height: 44px;
+    border-radius: 11px;
+    padding: 0 10px;
+    font-size: 0.85rem;
+  }
+
+  .image-ideas-grid {
+    grid-template-columns: 1fr;
+  }
+}
